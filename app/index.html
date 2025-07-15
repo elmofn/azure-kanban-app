@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadro de Tarefas Colaborativo</title>
+    <!-- Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca de ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SortableJS para Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Fontes do Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #526D82;
+        }
+        .sortable-drag {
+            opacity: 0.9 !important;
+        }
+        .description-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limita o texto a 2 linhas */
+            -webkit-box-orient: vertical;
+        }
+        .task-card, .list-row {
+            transition: background-color 0.5s ease-in-out, border-color 0.5s ease-in-out;
+        }
+        .task-card.highlight {
+            background-color: #c8d3db !important; /* Um tom mais escuro que o fundo claro */
+            border-color: #526D82 !important;
+        }
+        .dark .task-card.highlight {
+            background-color: #3a4b5c !important; /* Um tom mais claro que o fundo escuro */
+            border-color: #9DB2BF !important;
+        }
+        tr.highlight {
+             background-color: #DDE6ED !important;
+        }
+         .dark tr.highlight {
+             background-color: #526D82 !important;
+        }
+    </style>
+    <script>
+        tailwind.config = { 
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-darkest': '#27374D',
+                        'custom-dark': '#526D82',
+                        'custom-medium': '#9DB2BF',
+                        'custom-light': '#DDE6ED',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased bg-white dark:bg-custom-dark text-custom-darkest dark:text-custom-light">
+
+    <div id="app">
+        <!-- Cabeçalho -->
+        <header class="p-4 z-10 bg-custom-darkest border-b border-custom-dark/50 sticky top-0">
+            <div class="container mx-auto flex justify-between items-center flex-wrap gap-4">
+                <!-- Grupo da Esquerda: Título e Filtro -->
+                <div class="flex items-center gap-6">
+                    <h1 class="text-xl font-bold text-custom-light">Quadro de Tarefas</h1>
+                    <!-- Seletor de Visualização -->
+                    <div id="view-switcher" class="flex items-center bg-custom-dark p-1 rounded-lg">
+                        <button data-view="list" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Lista</button>
+                        <button data-view="kanban" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Kanban</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="responsibleFilter" class="text-custom-medium" title="Filtrar por responsável">
+                            <i data-lucide="user-check" class="w-5 h-5"></i>
+                        </label>
+                        <select id="responsibleFilter" class="bg-custom-dark border-none text-custom-light rounded-md focus:ring-custom-medium focus:ring-2 focus:outline-none py-2 pl-3 pr-8">
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Grupo da Direita: Ações e Configurações -->
+                <div class="flex items-center gap-4">
+                    <button id="addTaskBtn" class="bg-custom-light hover:bg-custom-medium text-custom-darkest font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        <span>Nova Tarefa</span>
+                    </button>
+                    <button id="showArchivedBtn" class="bg-custom-dark hover:bg-custom-medium/20 text-white p-2 rounded-lg flex items-center gap-2 transition-colors" title="Ver tarefas arquivadas">
+                        <i data-lucide="archive" class="w-5 h-5"></i>
+                    </button>
+                    <button id="theme-toggle" class="p-2 rounded-lg text-custom-medium hover:bg-custom-dark/50 transition-colors">
+                        <i id="theme-icon-light" data-lucide="sun" class="w-5 h-5 hidden"></i>
+                        <i id="theme-icon-dark" data-lucide="moon" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Conteúdo Principal -->
+        <main id="main-content" class="container mx-auto p-4 lg:p-6">
+            <!-- Visualização Kanban -->
+            <div id="kanbanView" class="hidden">
+                <div id="board-columns" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Coluna A fazer -->
+                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">A fazer</h2>
+                        <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="todo"></div>
+                    </div>
+                    <!-- Coluna Em Andamento -->
+                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Em Andamento</h2>
+                        <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="inprogress"></div>
+                    </div>
+                    <!-- Coluna Em Homologação -->
+                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Em Homologação</h2>
+                        <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="homologation"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Visualização em Lista -->
+            <div id="listView" class="hidden">
+                <!-- O conteúdo da lista será gerado aqui -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para Adicionar/Editar Tarefa -->
+    <div id="taskModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-md mx-4">
+            <h2 id="modalTitle" class="text-2xl font-bold text-custom-darkest dark:text-custom-light mb-6">Nova Tarefa</h2>
+            <form id="taskForm">
+                <div class="mb-4">
+                    <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
+                    <input type="text" id="taskDescription" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
+                </div>
+                <div class="mb-4">
+                    <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável</label>
+                    <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
+                </div>
+                <div class="mb-4">
+                    <label for="taskAzureLink" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Link Azure DevOps (Opcional)</label>
+                    <input type="url" id="taskAzureLink" placeholder="https://dev.azure.com/..." class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
+                </div>
+                <div class="flex items-center justify-end gap-4 mt-8">
+                    <button type="button" id="cancelBtn" class="bg-custom-medium hover:bg-custom-dark text-custom-darkest hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
+                    <button type="submit" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold py-2 px-4 rounded-lg transition-colors">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Tarefas Arquivadas -->
+    <div id="archivedTasksModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden overflow-y-auto py-10">
+        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-2xl mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-custom-darkest dark:text-custom-light">Tarefas Arquivadas (Pronto)</h2>
+                <button id="closeArchivedBtn" class="p-2 rounded-full text-custom-darkest dark:text-custom-light hover:bg-custom-medium/50 dark:hover:bg-custom-dark/50">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="archived-tasks-list" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Modal para Histórico da Tarefa -->
+    <div id="taskHistoryModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden overflow-y-auto py-10">
+        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-lg mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-custom-darkest dark:text-custom-light">Detalhes da Tarefa</h2>
+                <div class="flex items-center gap-2">
+                    <button id="editTaskBtn" class="p-2 rounded-full text-custom-darkest dark:text-custom-light hover:bg-custom-medium/50 dark:hover:bg-custom-dark/50" title="Editar Tarefa">
+                        <i data-lucide="file-pen-line" class="w-6 h-6 pointer-events-none"></i>
+                    </button>
+                    <button id="closeHistoryBtn" class="p-2 rounded-full text-custom-darkest dark:text-custom-light hover:bg-custom-medium/50 dark:hover:bg-custom-dark/50">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mb-4 p-4 bg-white dark:bg-custom-dark/50 rounded-lg space-y-3">
+                <div>
+                    <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium">Descrição</h3>
+                    <p id="task-history-description" class="text-custom-darkest dark:text-custom-light"></p>
+                </div>
+                <div class="border-t border-custom-medium/30 dark:border-custom-dark/50 pt-3">
+                    <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium">Responsável</h3>
+                    <p id="task-history-responsible" class="text-custom-darkest dark:text-custom-light"></p>
+                </div>
+                <div id="task-history-azure-link-container" class="hidden border-t border-custom-medium/30 dark:border-custom-dark/50 pt-3">
+                    <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium">Link Azure DevOps</h3>
+                    <a id="task-history-azure-link" href="#" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline break-all"></a>
+                </div>
+            </div>
+            <h3 class="font-bold mb-2 text-custom-darkest dark:text-custom-light">Histórico de Estados</h3>
+            <div id="task-history-list" class="space-y-2"></div>
+        </div>
+    </div>
+    
+    <!-- Modal para Confirmação de Exclusão -->
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-sm mx-4">
+            <h2 class="text-2xl font-bold text-red-600 dark:text-red-500 mb-4 flex items-center gap-2">
+                <i data-lucide="trash-2" class="w-6 h-6"></i>
+                Confirmar Exclusão
+            </h2>
+            <p class="text-custom-darkest dark:text-custom-light mb-6">Você tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.</p>
+            <div class="flex items-center justify-end gap-4 mt-8">
+                <button type="button" id="cancelDeleteBtn" class="bg-custom-medium hover:bg-custom-dark text-custom-darkest hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
+                <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- ESTADO DA APLICAÇÃO ---
+            let tasks = [
+                { id: 1, description: 'Analisar requisitos do novo módulo de login. Esta é uma descrição muito longa para testar como o layout se comporta com textos que excedem o espaço disponível no cartão da tarefa.', status: 'todo', responsible: 'Ana', createdAt: '2025-07-15T10:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-15T10:00:00Z' }], azureLink: 'https://dev.azure.com/exemplo/projeto/_workitems/edit/1' },
+                { id: 2, description: 'Desenvolver a interface do quadro Kanban.', status: 'inprogress', responsible: 'Beto', createdAt: '2025-07-14T11:30:00Z', history: [{ status: 'todo', timestamp: '2025-07-14T11:30:00Z' }, { status: 'inprogress', timestamp: '2025-07-15T14:00:00Z' }], azureLink: '' },
+                { id: 3, description: 'Testar o fluxo de login em ambiente de testes.', status: 'homologation', responsible: 'Carla', createdAt: '2025-07-13T15:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-13T15:00:00Z' }, { status: 'inprogress', timestamp: '2025-07-14T18:00:00Z' }, { status: 'homologation', timestamp: '2025-07-15T11:00:00Z' }], azureLink: 'https://dev.azure.com/exemplo/projeto/_workitems/edit/3' },
+                { id: 4, description: 'Configurar o ambiente de desenvolvimento inicial.', status: 'done', responsible: 'Ana', createdAt: '2025-07-12T09:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-12T09:00:00Z' }, { status: 'done', timestamp: '2025-07-13T10:00:00Z' }], azureLink: '' },
+                { id: 5, description: 'Rever a documentação da API.', status: 'todo', responsible: 'Beto', createdAt: '2025-07-15T08:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-15T08:00:00Z' }], azureLink: 'https://dev.azure.com/exemplo/projeto/_workitems/edit/5' },
+            ];
+            let selectedResponsible = 'all';
+            let currentView = 'list';
+            let lastInteractedTaskId = null;
+            let taskIdToDelete = null;
+            let editingTaskId = null;
+
+            // --- ELEMENTOS DOM ---
+            const responsibleFilterEl = document.getElementById('responsibleFilter');
+            const kanbanViewEl = document.getElementById('kanbanView');
+            const listViewEl = document.getElementById('listView');
+            const viewSwitcherEl = document.getElementById('view-switcher');
+            const archivedTasksModalEl = document.getElementById('archivedTasksModal');
+            const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+            const statusLabels = { todo: 'A fazer', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
+
+            // --- FUNÇÕES DE RENDERIZAÇÃO ---
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            };
+            const formatDateTime = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            };
+
+            const createTaskElement = (task) => {
+                const taskCard = document.createElement('div');
+                taskCard.className = 'task-card relative bg-white dark:bg-custom-darkest p-4 rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab';
+                taskCard.dataset.taskId = task.id;
+                
+                let approveButton = '';
+                if (task.status === 'homologation') {
+                    approveButton = `
+                        <button class="approve-btn absolute top-2 right-2 bg-green-500/20 hover:bg-green-500/40 text-green-700 dark:text-green-400 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar">
+                            <i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i>
+                        </button>
+                    `;
+                }
+                
+                let azureLinkIcon = '';
+                if (task.azureLink) {
+                    azureLinkIcon = `
+                        <a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps">
+                            <i data-lucide="external-link" class="w-4 h-4 pointer-events-none"></i>
+                        </a>
+                    `;
+                }
+
+                taskCard.innerHTML = `
+                    <p class="text-custom-darkest dark:text-custom-light pr-8 description-truncate" title="${task.description}">${task.description}</p>
+                    ${approveButton}
+                    <div class="mt-3 pt-2 border-t border-custom-medium/50 dark:border-custom-dark flex justify-between items-center">
+                        <div class="flex items-center gap-1">
+                            <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico">
+                                <i data-lucide="info" class="w-4 h-4 pointer-events-none"></i>
+                            </button>
+                            ${azureLinkIcon}
+                            <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa">
+                                <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
+                            </button>
+                        </div>
+                        <strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>
+                    </div>
+                `;
+                return taskCard;
+            };
+            
+            const renderKanbanView = () => {
+                document.querySelectorAll('.task-list').forEach(list => list.innerHTML = '');
+                
+                let activeTasks = tasks.filter(t => t.status !== 'done');
+                if (selectedResponsible !== 'all') {
+                    activeTasks = activeTasks.filter(t => t.responsible === selectedResponsible);
+                }
+
+                const columns = [
+                    { id: 'todo', name: 'A fazer' },
+                    { id: 'inprogress', name: 'Em Andamento' },
+                    { id: 'homologation', name: 'Em Homologação' },
+                ];
+
+                columns.forEach(col => {
+                    const columnEl = kanbanViewEl.querySelector(`.kanban-column:has([data-column-id="${col.id}"])`);
+                    if (columnEl) {
+                        const tasksForColumn = activeTasks.filter(t => t.status === col.id);
+                        const header = columnEl.querySelector('h2');
+                        const list = columnEl.querySelector('.task-list');
+                        
+                        header.className = 'font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light flex justify-between items-center';
+                        header.innerHTML = `
+                            <span>${col.name}</span>
+                            <span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${tasksForColumn.length}</span>
+                        `;
+                        
+                        tasksForColumn.forEach(task => {
+                            list.appendChild(createTaskElement(task));
+                        });
+                    }
+                });
+                
+                lucide.createIcons();
+            };
+
+            const renderListView = () => {
+                let activeTasks = tasks.filter(t => t.status !== 'done');
+                if (selectedResponsible !== 'all') {
+                    activeTasks = activeTasks.filter(t => t.responsible === selectedResponsible);
+                }
+                
+                const tableBody = activeTasks.map(task => {
+                    let azureLinkIcon;
+                    if (task.azureLink) {
+                        azureLinkIcon = `
+                            <a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps">
+                                <i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i>
+                            </a>
+                        `;
+                    } else {
+                        // Placeholder para manter o alinhamento
+                        azureLinkIcon = `<div class="w-7 h-7"></div>`;
+                    }
+
+                    return `
+                        <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
+                            <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
+                            <td class="px-6 py-4 whitespace-nowrap">${task.responsible}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${statusLabels[task.status] || task.status}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico">
+                                        <i data-lucide="info" class="w-5 h-5 pointer-events-none"></i>
+                                    </button>
+                                    ${azureLinkIcon}
+                                    <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa">
+                                        <i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                const tableHtml = `
+                    <div class="bg-white dark:bg-custom-darkest/40 rounded-lg shadow overflow-hidden">
+                        <table class="min-w-full">
+                            <thead class="bg-custom-light dark:bg-custom-darkest/60">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Tarefa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Estado</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Criação</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-custom-light dark:divide-custom-dark">
+                                ${tableBody}
+                                ${activeTasks.length === 0 ? '<tr><td colspan="5" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa encontrada.</td></tr>' : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                listViewEl.innerHTML = tableHtml;
+                lucide.createIcons();
+            };
+
+            const updateActiveView = () => {
+                populateResponsibleFilter();
+                
+                viewSwitcherEl.querySelectorAll('.view-btn').forEach(btn => {
+                    if (btn.dataset.view === currentView) {
+                        btn.classList.add('bg-custom-light', 'text-custom-darkest');
+                        btn.classList.remove('text-custom-light');
+                    } else {
+                        btn.classList.remove('bg-custom-light', 'text-custom-darkest');
+                        btn.classList.add('text-custom-light');
+                    }
+                });
+
+                if (currentView === 'kanban') {
+                    kanbanViewEl.classList.remove('hidden');
+                    listViewEl.classList.add('hidden');
+                    renderKanbanView();
+                } else {
+                    kanbanViewEl.classList.add('hidden');
+                    listViewEl.classList.remove('hidden');
+                    renderListView();
+                }
+
+                if (lastInteractedTaskId) {
+                    setTimeout(() => {
+                        highlightTask(lastInteractedTaskId, currentView === 'kanban');
+                    }, 0);
+                }
+            };
+            
+            const renderArchivedTasks = () => {
+                const listEl = document.getElementById('archived-tasks-list');
+                listEl.innerHTML = '';
+                const archivedTasks = tasks.filter(t => t.status === 'done');
+
+                if (archivedTasks.length === 0) {
+                    listEl.innerHTML = '<p class="text-custom-dark dark:text-custom-medium text-center">Nenhuma tarefa arquivada.</p>';
+                    return;
+                }
+
+                archivedTasks.forEach(task => {
+                    const taskEl = document.createElement('div');
+                    taskEl.className = 'flex justify-between items-center p-3 bg-white dark:bg-custom-dark/50 rounded-lg mb-2 shadow-sm';
+                    taskEl.innerHTML = `
+                        <div>
+                           <p class="text-custom-darkest dark:text-custom-light">${task.description}</p>
+                           <p class="text-xs text-custom-dark dark:text-custom-medium mt-1">Responsável: ${task.responsible} &bull; Criado em: ${formatDate(task.createdAt)}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="restore-btn bg-custom-medium/50 dark:bg-custom-dark hover:bg-custom-medium dark:hover:bg-custom-medium/50 p-2 rounded-md" data-task-id="${task.id}" title="Restaurar Tarefa">
+                                <i data-lucide="undo-2" class="w-4 h-4 pointer-events-none"></i>
+                            </button>
+                            <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-2 rounded-md" data-task-id="${task.id}" title="Excluir tarefa permanentemente">
+                                <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
+                            </button>
+                        </div>
+                    `;
+                    listEl.appendChild(taskEl);
+                });
+                
+                lucide.createIcons();
+            };
+
+            const renderTaskHistory = (taskId) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                document.getElementById('task-history-description').textContent = task.description;
+                document.getElementById('task-history-responsible').textContent = task.responsible;
+
+                const linkContainer = document.getElementById('task-history-azure-link-container');
+                const linkEl = document.getElementById('task-history-azure-link');
+                if (task.azureLink) {
+                    linkEl.href = task.azureLink;
+                    linkEl.textContent = task.azureLink;
+                    linkContainer.classList.remove('hidden');
+                } else {
+                    linkContainer.classList.add('hidden');
+                }
+
+                const listEl = document.getElementById('task-history-list');
+                listEl.innerHTML = (task.history || [])
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .map(entry => `
+                        <div class="flex items-center gap-4 p-3 bg-white dark:bg-custom-dark/50 rounded-lg mb-2 shadow-sm">
+                            <span class="text-sm text-custom-dark dark:text-custom-medium">${formatDateTime(entry.timestamp)}</span>
+                            <span class="font-semibold text-custom-darkest dark:text-custom-light">${statusLabels[entry.status] || entry.status}</span>
+                        </div>
+                    `).join('');
+                
+                document.getElementById('taskHistoryModal').classList.remove('hidden');
+                lucide.createIcons();
+            };
+
+            const populateResponsibleFilter = () => {
+                const responsibles = [...new Set(tasks.map(t => t.responsible))];
+                const currentFilterValue = responsibleFilterEl.value;
+                responsibleFilterEl.innerHTML = '<option value="all">Todos</option>';
+                responsibles.forEach(r => {
+                    const option = document.createElement('option');
+                    option.value = r;
+                    option.textContent = r;
+                    responsibleFilterEl.appendChild(option);
+                });
+                responsibleFilterEl.value = currentFilterValue;
+            };
+
+            // --- LÓGICA DO TEMA ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIconLight = document.getElementById('theme-icon-light');
+            const themeIconDark = document.getElementById('theme-icon-dark');
+            
+            const applyTheme = () => {
+                if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    themeIconLight.classList.remove('hidden');
+                    themeIconDark.classList.add('hidden');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    themeIconLight.classList.add('hidden');
+                    themeIconDark.classList.remove('hidden');
+                }
+            }
+
+            themeToggle.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                }
+                applyTheme();
+            });
+
+            // --- LÓGICA DOS MODAIS ---
+            const taskModal = document.getElementById('taskModal');
+            const addTaskBtn = document.getElementById('addTaskBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const archivedTasksModal = document.getElementById('archivedTasksModal');
+            const showArchivedBtn = document.getElementById('showArchivedBtn');
+            const closeArchivedBtn = document.getElementById('closeArchivedBtn');
+            const taskHistoryModal = document.getElementById('taskHistoryModal');
+            const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+            const editTaskBtn = document.getElementById('editTaskBtn');
+
+            const openEditModal = (taskId) => {
+                const taskToEdit = tasks.find(t => t.id === taskId);
+                if (!taskToEdit) return;
+
+                editingTaskId = taskId;
+                
+                document.getElementById('modalTitle').textContent = 'Editar Tarefa';
+                document.getElementById('taskDescription').value = taskToEdit.description;
+                document.getElementById('taskResponsible').value = taskToEdit.responsible;
+                document.getElementById('taskAzureLink').value = taskToEdit.azureLink || '';
+
+                taskHistoryModal.classList.add('hidden');
+                taskModal.classList.remove('hidden');
+            };
+
+            addTaskBtn.addEventListener('click', () => {
+                editingTaskId = null; // Garante que estamos no modo de criação
+                document.getElementById('modalTitle').textContent = 'Nova Tarefa';
+                document.getElementById('taskForm').reset();
+                taskModal.classList.remove('hidden');
+            });
+            
+            cancelBtn.addEventListener('click', () => {
+                taskModal.classList.add('hidden');
+            });
+            
+            showArchivedBtn.addEventListener('click', () => {
+                renderArchivedTasks();
+                archivedTasksModal.classList.remove('hidden');
+            });
+            closeArchivedBtn.addEventListener('click', () => {
+                archivedTasksModal.classList.add('hidden');
+            });
+            
+            closeHistoryBtn.addEventListener('click', () => {
+                taskHistoryModal.classList.add('hidden');
+                if (currentView === 'kanban') {
+                    highlightTask(null);
+                }
+            });
+
+            editTaskBtn.addEventListener('click', () => {
+                openEditModal(lastInteractedTaskId);
+            });
+
+            document.getElementById('taskForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const description = document.getElementById('taskDescription').value;
+                const responsible = document.getElementById('taskResponsible').value;
+                const azureLink = document.getElementById('taskAzureLink').value;
+                let justEditedId = null;
+
+                if (editingTaskId) {
+                    // Modo de Edição
+                    const taskToUpdate = tasks.find(t => t.id === editingTaskId);
+                    if (taskToUpdate) {
+                        taskToUpdate.description = description;
+                        taskToUpdate.responsible = responsible;
+                        taskToUpdate.azureLink = azureLink;
+                        taskToUpdate.history.push({ status: 'edited', timestamp: new Date().toISOString() });
+                        justEditedId = editingTaskId;
+                    }
+                } else {
+                    // Modo de Criação
+                    const now = new Date().toISOString();
+                    const newTask = {
+                        id: Date.now(),
+                        description: description,
+                        responsible: responsible,
+                        status: 'todo',
+                        createdAt: now,
+                        history: [{ status: 'todo', timestamp: now }],
+                        azureLink: azureLink
+                    };
+                    tasks.unshift(newTask);
+                }
+                
+                editingTaskId = null; // Reseta o modo de edição
+                updateActiveView();
+                taskModal.classList.add('hidden');
+                e.target.reset();
+
+                // Se uma tarefa foi editada, aplique um destaque temporário
+                if (justEditedId) {
+                    lastInteractedTaskId = null; // Limpa a interação para evitar destaque persistente
+                    highlightTask(justEditedId, true); // Destaque temporário
+                }
+            });
+
+            // --- LÓGICA DE EXCLUSÃO ---
+            const openDeleteModal = (taskId) => {
+                taskIdToDelete = taskId;
+                deleteConfirmModalEl.classList.remove('hidden');
+                lucide.createIcons();
+            };
+
+            confirmDeleteBtn.addEventListener('click', () => {
+                if (taskIdToDelete) {
+                    tasks = tasks.filter(task => task.id !== taskIdToDelete);
+                    taskIdToDelete = null;
+                    deleteConfirmModalEl.classList.add('hidden');
+                    updateActiveView(); 
+                    renderArchivedTasks(); 
+                }
+            });
+
+            cancelDeleteBtn.addEventListener('click', () => {
+                taskIdToDelete = null;
+                deleteConfirmModalEl.classList.add('hidden');
+            });
+
+
+            // --- LÓGICA DE DRAG AND DROP E AÇÕES ---
+            const highlightTask = (taskId, temporary = true) => {
+                const previouslyHighlighted = document.querySelector('.highlight');
+                if (previouslyHighlighted) previouslyHighlighted.classList.remove('highlight');
+
+                if (!taskId) return;
+
+                const selector = `.task-card[data-task-id="${taskId}"], .list-row[data-task-id="${taskId}"]`;
+                const elementToHighlight = document.querySelector(selector);
+                
+                if (elementToHighlight) {
+                    elementToHighlight.classList.add('highlight');
+                    if (temporary) {
+                        setTimeout(() => {
+                           if(elementToHighlight.classList.contains('highlight')) {
+                               elementToHighlight.classList.remove('highlight');
+                           }
+                        }, 1500);
+                    }
+                }
+            };
+
+            const initializeDragAndDrop = () => {
+                document.querySelectorAll('.task-list').forEach(list => {
+                    new Sortable(list, {
+                        group: 'kanban',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        onEnd: function (evt) {
+                            const taskId = parseInt(evt.item.dataset.taskId);
+                            const newStatus = evt.to.dataset.columnId;
+                            const task = tasks.find(t => t.id === taskId);
+                            
+                            if (task) {
+                                const oldStatus = task.status;
+                                if (oldStatus !== newStatus) {
+                                    task.status = newStatus;
+                                    task.history.push({ status: newStatus, timestamp: new Date().toISOString() });
+                                }
+
+                                const orderedTaskIds = Array.from(document.querySelectorAll('.task-list .task-card'))
+                                    .map(el => parseInt(el.dataset.taskId));
+                                
+                                const activeTasks = tasks.filter(t => t.status !== 'done');
+                                const doneTasks = tasks.filter(t => t.status === 'done');
+                                
+                                const taskMap = new Map(activeTasks.map(t => [t.id, t]));
+                                
+                                const newOrderedActiveTasks = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean);
+                                
+                                tasks = [...newOrderedActiveTasks, ...doneTasks];
+
+                                renderKanbanView();
+                                highlightTask(taskId);
+                            }
+                        }
+                    });
+                });
+            };
+            
+            // Event listener unificado para ações
+            document.body.addEventListener('click', (e) => {
+                const targetButton = e.target.closest('button, a');
+                if (!targetButton) return;
+
+                if (targetButton.classList.contains('azure-link-btn')) {
+                    e.stopPropagation(); // Impede que outros eventos de clique sejam acionados
+                    return;
+                }
+
+                const taskId = targetButton.dataset.taskId ? parseInt(targetButton.dataset.taskId) : null;
+
+                if (targetButton.classList.contains('approve-btn') && taskId) {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task) {
+                        task.status = 'done';
+                        task.history.push({ status: 'done', timestamp: new Date().toISOString() });
+                        updateActiveView();
+                    }
+                } else if (targetButton.classList.contains('info-btn') && taskId) {
+                    lastInteractedTaskId = taskId;
+                    highlightTask(taskId, false);
+                    renderTaskHistory(taskId);
+                } else if (targetButton.classList.contains('delete-btn') && taskId) {
+                    openDeleteModal(taskId);
+                } else if (targetButton.classList.contains('restore-btn') && taskId) {
+                    const taskToRestore = tasks.find(t => t.id === taskId);
+                    if (taskToRestore) {
+                        taskToRestore.status = 'todo';
+                        taskToRestore.history.push({ status: 'todo', timestamp: new Date().toISOString() });
+                        archivedTasksModalEl.classList.add('hidden');
+                        updateActiveView();
+                    }
+                }
+            });
+
+            responsibleFilterEl.addEventListener('change', (e) => {
+                selectedResponsible = e.target.value;
+                updateActiveView();
+            });
+
+            viewSwitcherEl.addEventListener('click', (e) => {
+                const view = e.target.closest('.view-btn')?.dataset.view;
+                if (view && view !== currentView) {
+                    currentView = view;
+                    updateActiveView();
+                }
+            });
+
+            // --- INICIALIZAÇÃO ---
+            applyTheme();
+            updateActiveView();
+            initializeDragAndDrop();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
