@@ -226,18 +226,28 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- ESTADO DA APLICAÇÃO ---
-            let tasks = [
-                { id: 1, description: 'Analisar requisitos do novo módulo de login. Esta é uma descrição muito longa para testar como o layout se comporta com textos que excedem o espaço disponível no cartão da tarefa.', status: 'todo', responsible: 'Ana', createdAt: '2025-07-15T10:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-15T10:00:00Z' }], azureLink: 'https://dev.azure.com/exemplo/projeto/_workitems/edit/1' },
-                { id: 2, description: 'Desenvolver a interface do quadro Kanban.', status: 'inprogress', responsible: 'Beto', createdAt: '2025-07-14T11:30:00Z', history: [{ status: 'todo', timestamp: '2025-07-14T11:30:00Z' }, { status: 'inprogress', timestamp: '2025-07-15T14:00:00Z' }], azureLink: '' },
-                { id: 3, description: 'Testar o fluxo de login em ambiente de testes.', status: 'homologation', responsible: 'Carla', createdAt: '2025-07-13T15:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-13T15:00:00Z' }, { status: 'inprogress', timestamp: '2025-07-14T18:00:00Z' }, { status: 'homologation', timestamp: '2025-07-15T11:00:00Z' }], azureLink: 'https://dev.azure.com/exemplo/projeto/_workitems/edit/3' },
-                { id: 4, description: 'Configurar o ambiente de desenvolvimento inicial.', status: 'done', responsible: 'Ana', createdAt: '2025-07-12T09:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-12T09:00:00Z' }, { status: 'done', timestamp: '2025-07-13T10:00:00Z' }], azureLink: '' },
-                { id: 5, description: 'Rever a documentação da API.', status: 'todo', responsible: 'Beto', createdAt: '2025-07-15T08:00:00Z', history: [{ status: 'todo', timestamp: '2025-07-15T08:00:00Z' }], azureLink: 'https://dev.azure.com/exemplo/projeto/_workitems/edit/5' },
-            ];
+            let tasks = []; // A lista de tarefas agora começa vazia
             let selectedResponsible = 'all';
             let currentView = 'list';
             let lastInteractedTaskId = null;
             let taskIdToDelete = null;
             let editingTaskId = null;
+
+            // --- FUNÇÃO PARA BUSCAR DADOS DA API ---
+            async function fetchAndRenderTasks() {
+                try {
+                    // A URL '/api/getTasks' funciona tanto localmente quanto na nuvem
+                    const response = await fetch('/api/getTasks');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    tasks = await response.json();
+                    updateActiveView(); // Renderiza a tela com os dados recebidos
+                } catch (error) {
+                    console.error("Falha ao buscar tarefas:", error);
+                    // Opcional: Mostrar uma mensagem de erro na tela para o usuário
+                }
+            }
 
             // --- ELEMENTOS DOM ---
             const responsibleFilterEl = document.getElementById('responsibleFilter');
@@ -594,47 +604,48 @@
                 openEditModal(lastInteractedTaskId);
             });
 
-            document.getElementById('taskForm').addEventListener('submit', (e) => {
+            document.getElementById('taskForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const description = document.getElementById('taskDescription').value;
                 const responsible = document.getElementById('taskResponsible').value;
                 const azureLink = document.getElementById('taskAzureLink').value;
                 let justEditedId = null;
 
-                if (editingTaskId) {
-                    // Modo de Edição
-                    const taskToUpdate = tasks.find(t => t.id === editingTaskId);
-                    if (taskToUpdate) {
-                        taskToUpdate.description = description;
-                        taskToUpdate.responsible = responsible;
-                        taskToUpdate.azureLink = azureLink;
-                        taskToUpdate.history.push({ status: 'edited', timestamp: new Date().toISOString() });
-                        justEditedId = editingTaskId;
-                    }
-                } else {
-                    // Modo de Criação
-                    const now = new Date().toISOString();
-                    const newTask = {
-                        id: Date.now(),
-                        description: description,
-                        responsible: responsible,
-                        status: 'todo',
-                        createdAt: now,
-                        history: [{ status: 'todo', timestamp: now }],
-                        azureLink: azureLink
-                    };
-                    tasks.unshift(newTask);
-                }
-                
-                editingTaskId = null; // Reseta o modo de edição
-                updateActiveView();
-                taskModal.classList.add('hidden');
-                e.target.reset();
+                const taskPayload = {
+                    description,
+                    responsible,
+                    azureLink
+                };
 
-                // Se uma tarefa foi editada, aplique um destaque temporário
-                if (justEditedId) {
-                    lastInteractedTaskId = null; // Limpa a interação para evitar destaque persistente
-                    highlightTask(justEditedId, true); // Destaque temporário
+                try {
+                    // Se estiver editando, a lógica será diferente (implementaremos depois)
+                    if (editingTaskId) {
+                        // Lógica de edição virá aqui
+                    } else {
+                        // Modo de Criação: envia os dados para a nova API
+                        const response = await fetch('/api/createTask', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(taskPayload),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Falha ao criar a tarefa.');
+                        }
+                    }
+
+                    editingTaskId = null;
+                    taskModal.classList.add('hidden');
+                    e.target.reset();
+
+                    // Após criar a tarefa, busca a lista atualizada do banco de dados
+                    await fetchAndRenderTasks();
+
+                } catch (error) {
+                    console.error("Erro ao salvar tarefa:", error);
+                    // Opcional: Mostrar uma mensagem de erro para o usuário
                 }
             });
 
@@ -773,7 +784,7 @@
 
             // --- INICIALIZAÇÃO ---
             applyTheme();
-            updateActiveView();
+            fetchAndRenderTasks(); // <-- PEGA AS TAKS PRA NÓS bb
             initializeDragAndDrop();
             lucide.createIcons();
         });
