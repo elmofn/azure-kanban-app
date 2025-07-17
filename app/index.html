@@ -361,7 +361,8 @@
                 columns.forEach(col => {
                     const columnEl = kanbanViewEl.querySelector(`.kanban-column:has([data-column-id="${col.id}"])`);
                     if (columnEl) {
-                        const tasksForColumn = activeTasks.filter(t => t.status === col.id);
+                        const tasksForColumn = activeTasks.filter(t => t.status === col.id)
+                        .sort((a, b) => a.order - b.order); // Pra garantir que as tarefas vão ser renderizadas na ordem certa
                         const header = columnEl.querySelector('h2');
                         const list = columnEl.querySelector('.task-list');
                         
@@ -749,40 +750,55 @@
             };
 
             const initializeDragAndDrop = () => {
-            document.querySelectorAll('.task-list').forEach(list => {
-                new Sortable(list, {
-                    group: 'kanban',
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    dragClass: 'sortable-drag',
-                    onEnd: async function (evt) {
-                        const taskId = evt.item.dataset.taskId;
-                        const newStatus = evt.to.dataset.columnId;
-                        const task = tasks.find(t => t.id === taskId);
+                document.querySelectorAll('.task-list').forEach(list => {
+                    new Sortable(list, {
+                        group: 'kanban',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        onEnd: async function (evt) {
+                            const taskId = evt.item.dataset.taskId;
+                            const newStatus = evt.to.dataset.columnId;
+                            const task = tasks.find(t => t.id === taskId);
 
-                        if (task && task.status !== newStatus) {
-                            try {
-                                const response = await fetch(`/api/updateTask/${taskId}`, {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: newStatus })
-                                });
+                            // Se a tarefa mudou de coluna
+                            if (task && task.status !== newStatus) {
+                                try {
+                                    const response = await fetch(`/api/updateTask/${taskId}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ status: newStatus })
+                                    });
+                                    if (!response.ok) throw new Error('Falha ao atualizar o status da tarefa.');
+                                    // A notificação do SignalR irá tratar da atualização da UI
+                                } catch (error) {
+                                    console.error("Erro ao mover tarefa:", error);
+                                }
+                            } 
+                            // Se a tarefa foi reordenada (mesmo que tenha mudado de coluna)
+                            else {
+                                try {
+                                    const allTaskElements = Array.from(document.querySelectorAll('.task-card'));
+                                    const orderedTasksPayload = allTaskElements.map((el, index) => ({
+                                        id: el.dataset.taskId,
+                                        order: index
+                                    }));
 
-                                if (!response.ok) throw new Error('Falha ao atualizar o status da tarefa.');
-
-                                // Atualiza a visualização com os dados do servidor
-                                await fetchAndRenderTasks();
-                                highlightTask(taskId);
-
-                            } catch (error) {
-                                console.error("Erro ao mover tarefa:", error);
-                                // Opcional: Reverter a mudança visual em caso de erro
+                                    const response = await fetch(`/api/updateOrder`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(orderedTasksPayload)
+                                    });
+                                    if (!response.ok) throw new Error('Falha ao atualizar a ordem das tarefas.');
+                                    // A notificação do SignalR irá tratar da atualização da UI
+                                } catch (error) {
+                                    console.error("Erro ao reordenar tarefas:", error);
+                                }
                             }
                         }
-                    }
+                    });
                 });
-            });
-        };
+            };
             
             // Event listener unificado para ações
             document.body.addEventListener('click', (e) => {

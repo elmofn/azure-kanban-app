@@ -33,7 +33,8 @@ app.http('createTask', {
                 azureLink: taskData.azureLink || '',
                 status: 'todo',
                 createdAt: new Date().toISOString(),
-                history: [{ status: 'todo', timestamp: new Date().toISOString() }]
+                history: [{ status: 'todo', timestamp: new Date().toISOString() }],
+                order: Date.now() // <-- Coloquei para ordenar por data na lista
             };
             await database.containers.createIfNotExists({ id: "Tasks", partitionKey: { paths: ["/id"] } });
             await container.items.create(newTask);
