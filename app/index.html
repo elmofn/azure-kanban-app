@@ -236,16 +236,15 @@
             // --- FUNÇÃO PARA BUSCAR DADOS DA API ---
             async function fetchAndRenderTasks() {
                 try {
-                    // A URL '/api/getTasks' funciona tanto localmente quanto na nuvem
                     const response = await fetch('/api/getTasks');
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     tasks = await response.json();
-                    updateActiveView(); // Renderiza a tela com os dados recebidos
+                    updateActiveView(); // Renderiza a vista principal
+                    renderArchivedTasks(); // Renderiza o modal de arquivados
                 } catch (error) {
                     console.error("Falha ao buscar tarefas:", error);
-                    // Opcional: Mostrar uma mensagem de erro na tela para o usuário
                 }
             }
 
@@ -618,10 +617,21 @@
                 };
 
                 try {
-                    // Se estiver editando, a lógica será diferente (implementaremos depois)
                     if (editingTaskId) {
-                        // Lógica de edição virá aqui
+                        // Modo de Edição
+                        const response = await fetch(`/api/updateTask/${editingTaskId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(taskPayload)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Falha ao atualizar a tarefa.');
+                        }
+                        justEditedId = editingTaskId;
+
                     } else {
+
                         // Modo de Criação: envia os dados para a nova API
                         const response = await fetch('/api/createTask', {
                             method: 'POST',
@@ -670,8 +680,8 @@
                         taskIdToDelete = null;
                         deleteConfirmModalEl.classList.add('hidden');
 
-                        renderArchivedTasks();
-                        await fetchAndRenderTasks();
+                        // Apenas chamo função central, que agora atualiza tudo :)
+                        await fetchAndRenderTasks(); 
 
                     } catch (error) {
                         console.error("Erro ao excluir tarefa:", error);
@@ -708,43 +718,40 @@
             };
 
             const initializeDragAndDrop = () => {
-                document.querySelectorAll('.task-list').forEach(list => {
-                    new Sortable(list, {
-                        group: 'kanban',
-                        animation: 150,
-                        ghostClass: 'sortable-ghost',
-                        dragClass: 'sortable-drag',
-                        onEnd: function (evt) {
-                            const taskId = parseInt(evt.item.dataset.taskId);
-                            const newStatus = evt.to.dataset.columnId;
-                            const task = tasks.find(t => t.id === taskId);
-                            
-                            if (task) {
-                                const oldStatus = task.status;
-                                if (oldStatus !== newStatus) {
-                                    task.status = newStatus;
-                                    task.history.push({ status: newStatus, timestamp: new Date().toISOString() });
-                                }
+            document.querySelectorAll('.task-list').forEach(list => {
+                new Sortable(list, {
+                    group: 'kanban',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    onEnd: async function (evt) {
+                        const taskId = evt.item.dataset.taskId;
+                        const newStatus = evt.to.dataset.columnId;
+                        const task = tasks.find(t => t.id === taskId);
 
-                                const orderedTaskIds = Array.from(document.querySelectorAll('.task-list .task-card'))
-                                    .map(el => parseInt(el.dataset.taskId));
-                                
-                                const activeTasks = tasks.filter(t => t.status !== 'done');
-                                const doneTasks = tasks.filter(t => t.status === 'done');
-                                
-                                const taskMap = new Map(activeTasks.map(t => [t.id, t]));
-                                
-                                const newOrderedActiveTasks = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean);
-                                
-                                tasks = [...newOrderedActiveTasks, ...doneTasks];
+                        if (task && task.status !== newStatus) {
+                            try {
+                                const response = await fetch(`/api/updateTask/${taskId}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: newStatus })
+                                });
 
-                                renderKanbanView();
+                                if (!response.ok) throw new Error('Falha ao atualizar o status da tarefa.');
+
+                                // Atualiza a visualização com os dados do servidor
+                                await fetchAndRenderTasks();
                                 highlightTask(taskId);
+
+                            } catch (error) {
+                                console.error("Erro ao mover tarefa:", error);
+                                // Opcional: Reverter a mudança visual em caso de erro
                             }
                         }
-                    });
+                    }
                 });
-            };
+            });
+        };
             
             // Event listener unificado para ações
             document.body.addEventListener('click', (e) => {
