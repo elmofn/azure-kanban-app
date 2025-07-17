@@ -229,6 +229,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- ESTADO DA APLICAÇÃO ---
             let tasks = []; // A lista de tarefas agora começa vazia
+            let taskToHighlightTemporarily = null;
             let selectedResponsible = 'all';
             let currentView = 'list';
             let lastInteractedTaskId = null;
@@ -255,11 +256,26 @@
                     .withUrl('/api') // A SWA CLI/Azure irá encaminhar isto para a função 'negotiate'
                     .build();
 
-                // Ouve o evento 'tasksUpdated' que o nosso backend envia
-                connection.on('tasksUpdated', () => {
-                    console.log('Notificação recebida: atualizando tarefas.');
-                    fetchAndRenderTasks();
+            connection.on('tasksUpdated', () => {
+                console.log('Notificação recebida: atualizando tarefas.');
+                const persistentHighlightId = lastInteractedTaskId; // Guarda o ID do destaque persistente
+
+                fetchAndRenderTasks().then(() => {
+                    // Após a UI ser redesenhada...
+
+                    // Re-aplica o destaque persistente se necessário (apenas na vista de lista)
+                    if (persistentHighlightId && currentView === 'list') {
+                        lastInteractedTaskId = persistentHighlightId;
+                        highlightTask(persistentHighlightId, false);
+                    }
+
+                    // Aplica o destaque temporário se uma ação acabou de acontecer
+                    if (taskToHighlightTemporarily) {
+                        highlightTask(taskToHighlightTemporarily, true);
+                        taskToHighlightTemporarily = null; // Limpa a memória após o uso
+                    }
                 });
+            });
 
                 // Tenta reconectar-se automaticamente em caso de perda de conexão
                 async function start() {
@@ -626,9 +642,12 @@
             
             closeHistoryBtn.addEventListener('click', () => {
                 taskHistoryModal.classList.add('hidden');
+                // Se a vista atual for Kanban, remove o destaque persistente ao fechar.
                 if (currentView === 'kanban') {
-                    highlightTask(null);
+                    highlightTask(null); // Remove qualquer destaque existente.
+                    lastInteractedTaskId = null; // Esquece a última tarefa interagida.
                 }
+                // Na vista de Lista, o destaque permanece intencionalmente.
             });
 
             editTaskBtn.addEventListener('click', () => {
@@ -637,57 +656,44 @@
 
             document.getElementById('taskForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const description = document.getElementById('taskDescription').value;
-                const responsible = document.getElementById('taskResponsible').value;
-                const azureLink = document.getElementById('taskAzureLink').value;
-                let justEditedId = null;
-
                 const taskPayload = {
-                    description,
-                    responsible,
-                    azureLink
+                    description: document.getElementById('taskDescription').value,
+                    responsible: document.getElementById('taskResponsible').value,
+                    azureLink: document.getElementById('taskAzureLink').value
                 };
 
                 try {
+                    let response;
                     if (editingTaskId) {
                         // Modo de Edição
-                        const response = await fetch(`/api/updateTask/${editingTaskId}`, {
+                        response = await fetch(`/api/updateTask/${editingTaskId}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload)
                         });
-
-                        if (!response.ok) {
-                            throw new Error('Falha ao atualizar a tarefa.');
-                        }
-                        justEditedId = editingTaskId;
-
                     } else {
-
-                        // Modo de Criação: envia os dados para a nova API
-                        const response = await fetch('/api/createTask', {
+                        // Modo de Criação
+                        response = await fetch('/api/createTask', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload),
                         });
-
-                        if (!response.ok) {
-                            throw new Error('Falha ao criar a tarefa.');
-                        }
                     }
 
-                    editingTaskId = null;
+                    if (!response.ok) {
+                        throw new Error('Falha ao salvar a tarefa.');
+                    }
+
+                    const savedTask = await response.json();
+                    taskToHighlightTemporarily = savedTask.id; // Guarda o ID para o destaque temporário
+
                     taskModal.classList.add('hidden');
                     e.target.reset();
-
-                    // Após criar a tarefa, busca a lista atualizada do banco de dados
-                    await fetchAndRenderTasks();
+                    editingTaskId = null;
+                    // Não é preciso chamar fetchAndRenderTasks() aqui, o SignalR fará isso.
 
                 } catch (error) {
                     console.error("Erro ao salvar tarefa:", error);
-                    // Opcional: Mostrar uma mensagem de erro para o usuário
                 }
             });
 
@@ -758,24 +764,22 @@
                         dragClass: 'sortable-drag',
                         onEnd: async function (evt) {
                             const taskId = evt.item.dataset.taskId;
+                            taskToHighlightTemporarily = taskId; // Guarda o ID para o destaque temporário
+
                             const newStatus = evt.to.dataset.columnId;
                             const task = tasks.find(t => t.id === taskId);
 
-                            // Se a tarefa mudou de coluna
+                            // Se a tarefa mudou de coluna, atualiza o status
                             if (task && task.status !== newStatus) {
                                 try {
-                                    const response = await fetch(`/api/updateTask/${taskId}`, {
+                                    await fetch(`/api/updateTask/${taskId}`, {
                                         method: 'PUT',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ status: newStatus })
                                     });
-                                    if (!response.ok) throw new Error('Falha ao atualizar o status da tarefa.');
-                                    // A notificação do SignalR irá tratar da atualização da UI
-                                } catch (error) {
-                                    console.error("Erro ao mover tarefa:", error);
-                                }
+                                } catch (error) { console.error("Erro ao mover tarefa:", error); }
                             } 
-                            // Se a tarefa foi reordenada (mesmo que tenha mudado de coluna)
+                            // Se não, atualiza a ordem
                             else {
                                 try {
                                     const allTaskElements = Array.from(document.querySelectorAll('.task-card'));
@@ -783,17 +787,12 @@
                                         id: el.dataset.taskId,
                                         order: index
                                     }));
-
-                                    const response = await fetch(`/api/updateOrder`, {
+                                    await fetch(`/api/updateOrder`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify(orderedTasksPayload)
                                     });
-                                    if (!response.ok) throw new Error('Falha ao atualizar a ordem das tarefas.');
-                                    // A notificação do SignalR irá tratar da atualização da UI
-                                } catch (error) {
-                                    console.error("Erro ao reordenar tarefas:", error);
-                                }
+                                } catch (error) { console.error("Erro ao reordenar tarefas:", error); }
                             }
                         }
                     });
@@ -801,39 +800,45 @@
             };
             
             // Event listener unificado para ações
-            document.body.addEventListener('click', (e) => {
+            document.body.addEventListener('click', async (e) => {
                 const targetButton = e.target.closest('button, a');
-                if (!targetButton) return;
+                if (!targetButton || targetButton.classList.contains('azure-link-btn')) return;
 
-                if (targetButton.classList.contains('azure-link-btn')) {
-                    e.stopPropagation();
-                    return;
-                }
-
-                // CORREÇÃO: O ID agora é uma string (UUID), não um número.
                 const taskId = targetButton.dataset.taskId || null;
+                if (!taskId) return;
 
-                if (targetButton.classList.contains('approve-btn') && taskId) {
-                    const task = tasks.find(t => t.id === taskId);
-                    if (task) {
-                        task.status = 'done';
-                        // A lógica de atualização será movida para a API na próxima etapa
-                        updateActiveView();
-                    }
-                } else if (targetButton.classList.contains('info-btn') && taskId) {
+                // Ação de Aprovar/Arquivar Tarefa
+                if (targetButton.classList.contains('approve-btn')) {
+                    taskToHighlightTemporarily = taskId; // Guarda o ID para o destaque
+                    try {
+                        await fetch(`/api/updateTask/${taskId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'done' })
+                        });
+                    } catch (error) { console.error("Erro ao arquivar tarefa:", error); }
+                } 
+                // Ação de Ver Informações
+                else if (targetButton.classList.contains('info-btn')) {
                     lastInteractedTaskId = taskId;
                     highlightTask(taskId, false);
                     renderTaskHistory(taskId);
-                } else if (targetButton.classList.contains('delete-btn') && taskId) {
+                } 
+                // Ação de Excluir
+                else if (targetButton.classList.contains('delete-btn')) {
                     openDeleteModal(taskId);
-                } else if (targetButton.classList.contains('restore-btn') && taskId) {
-                    const taskToRestore = tasks.find(t => t.id === taskId);
-                    if (taskToRestore) {
-                        taskToRestore.status = 'todo';
-                        // A lógica de atualização será movida para a API na próxima etapa
+                } 
+                // Ação de Restaurar Tarefa
+                else if (targetButton.classList.contains('restore-btn')) {
+                    taskToHighlightTemporarily = taskId; // <-- ADICIONE ESTA LINHA para guardar o ID para o destaque
+                    try {
+                        await fetch(`/api/updateTask/${taskId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'todo' })
+                        });
                         archivedTasksModalEl.classList.add('hidden');
-                        updateActiveView();
-                    }
+                    } catch (error) { console.error("Erro ao restaurar tarefa:", error); }
                 }
             });
 
@@ -847,6 +852,13 @@
                 const view = e.target.closest('.view-btn')?.dataset.view;
                 if (view && view !== currentView) {
                     currentView = view;
+
+                    // CORREÇÃO: Se estamos a mudar para o Kanban, limpa qualquer seleção anterior.
+                    if (currentView === 'kanban') {
+                        lastInteractedTaskId = null;
+                        highlightTask(null);
+                    }
+
                     updateActiveView();
                 }
             });
@@ -854,7 +866,7 @@
             // --- INICIALIZAÇÃO ---
             applyTheme();
             fetchAndRenderTasks(); // <-- PEGA AS TAKS PRA NÓS bb
-            connectToSignalR(); // <// Colaborar em tempo real
+            connectToSignalR(); // <-- Colaborar em tempo real
             initializeDragAndDrop();
             lucide.createIcons();
         });
