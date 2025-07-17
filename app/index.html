@@ -656,13 +656,26 @@
                 lucide.createIcons();
             };
 
-            confirmDeleteBtn.addEventListener('click', () => {
+            confirmDeleteBtn.addEventListener('click', async () => {
                 if (taskIdToDelete) {
-                    tasks = tasks.filter(task => task.id !== taskIdToDelete);
-                    taskIdToDelete = null;
-                    deleteConfirmModalEl.classList.add('hidden');
-                    updateActiveView(); 
-                    renderArchivedTasks(); 
+                    try {
+                        const response = await fetch(`/api/deleteTask/${taskIdToDelete}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Falha ao excluir a tarefa.');
+                        }
+
+                        taskIdToDelete = null;
+                        deleteConfirmModalEl.classList.add('hidden');
+
+                        renderArchivedTasks();
+                        await fetchAndRenderTasks();
+
+                    } catch (error) {
+                        console.error("Erro ao excluir tarefa:", error);
+                    }
                 }
             });
 
@@ -739,17 +752,18 @@
                 if (!targetButton) return;
 
                 if (targetButton.classList.contains('azure-link-btn')) {
-                    e.stopPropagation(); // Impede que outros eventos de clique sejam acionados
+                    e.stopPropagation();
                     return;
                 }
 
-                const taskId = targetButton.dataset.taskId ? parseInt(targetButton.dataset.taskId) : null;
+                // CORREÇÃO: O ID agora é uma string (UUID), não um número.
+                const taskId = targetButton.dataset.taskId || null;
 
                 if (targetButton.classList.contains('approve-btn') && taskId) {
                     const task = tasks.find(t => t.id === taskId);
                     if (task) {
                         task.status = 'done';
-                        task.history.push({ status: 'done', timestamp: new Date().toISOString() });
+                        // A lógica de atualização será movida para a API na próxima etapa
                         updateActiveView();
                     }
                 } else if (targetButton.classList.contains('info-btn') && taskId) {
@@ -762,12 +776,13 @@
                     const taskToRestore = tasks.find(t => t.id === taskId);
                     if (taskToRestore) {
                         taskToRestore.status = 'todo';
-                        taskToRestore.history.push({ status: 'todo', timestamp: new Date().toISOString() });
+                        // A lógica de atualização será movida para a API na próxima etapa
                         archivedTasksModalEl.classList.add('hidden');
                         updateActiveView();
                     }
                 }
             });
+
 
             responsibleFilterEl.addEventListener('change', (e) => {
                 selectedResponsible = e.target.value;
