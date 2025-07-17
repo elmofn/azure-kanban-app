@@ -10,6 +10,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- SortableJS para Drag and Drop -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- SignalR Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
     <!-- Fontes do Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -246,6 +248,35 @@
                 } catch (error) {
                     console.error("Falha ao buscar tarefas:", error);
                 }
+            }
+
+            function connectToSignalR() {
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl('/api') // A SWA CLI/Azure irá encaminhar isto para a função 'negotiate'
+                    .build();
+
+                // Ouve o evento 'tasksUpdated' que o nosso backend envia
+                connection.on('tasksUpdated', () => {
+                    console.log('Notificação recebida: atualizando tarefas.');
+                    fetchAndRenderTasks();
+                });
+
+                // Tenta reconectar-se automaticamente em caso de perda de conexão
+                async function start() {
+                    try {
+                        await connection.start();
+                        console.log("Conectado ao SignalR.");
+                    } catch (err) {
+                        console.log(err);
+                        setTimeout(start, 5000);
+                    }
+                };
+
+                connection.onclose(async () => {
+                    await start();
+                });
+
+                start();
             }
 
             // --- ELEMENTOS DOM ---
@@ -807,6 +838,7 @@
             // --- INICIALIZAÇÃO ---
             applyTheme();
             fetchAndRenderTasks(); // <-- PEGA AS TAKS PRA NÓS bb
+            connectToSignalR(); // <// Colaborar em tempo real
             initializeDragAndDrop();
             lucide.createIcons();
         });
