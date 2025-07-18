@@ -198,7 +198,8 @@
                 </div>
                 <div class="mb-4">
                     <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável</label>
-                    <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
+                    <input type="text" id="taskResponsible" list="responsible-list" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required placeholder="Selecione ou digite um nome">
+                    <datalist id="responsible-list"></datalist>
                 </div>
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
@@ -387,6 +388,19 @@
                 });
             };
 
+            const populateResponsibleInput = () => {
+                const responsibleList = document.getElementById('responsible-list');
+                // Extrai todos os nomes de responsáveis únicos e não vazios do array de tarefas
+                const responsibles = [...new Set(tasks.map(t => t.responsible).filter(Boolean))];
+
+                responsibleList.innerHTML = '';
+                responsibles.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    responsibleList.appendChild(option);
+                });
+            };
+
             // --- ELEMENTOS DOM ---
             const responsibleFilterEl = document.getElementById('responsibleFilter');
             const kanbanViewEl = document.getElementById('kanbanView');
@@ -420,7 +434,7 @@
                 let approveButton = '';
                 if (task.status === 'homologation') {
                     approveButton = `
-                        <button class="approve-btn absolute top-2 right-2 bg-green-500/20 hover:bg-green-500/40 text-green-700 dark:text-green-400 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar">
+                        <button class="approve-btn absolute top-2 right-2 bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-700 dark:text-yellow-400 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar">
                             <i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i>
                         </button>
                     `;
@@ -747,6 +761,7 @@
                 document.getElementById('taskProject').value = taskToEdit.project || '';
                 document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';
 
+                populateResponsibleInput();
                 populateProjectInput();
 
                 taskHistoryModal.classList.add('hidden');
@@ -757,6 +772,7 @@
                 editingTaskId = null;
                 document.getElementById('modalTitle').textContent = 'Nova Tarefa';
                 document.getElementById('taskForm').reset();
+                populateResponsibleInput();
                 populateProjectInput();
                 taskModal.classList.remove('hidden');
             });
