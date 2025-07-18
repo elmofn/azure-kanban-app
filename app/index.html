@@ -156,6 +156,17 @@
                     <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável</label>
                     <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
                 </div>
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="taskProject" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Projeto</label>
+                        <input type="text" id="taskProject" list="project-list" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" placeholder="Selecione ou crie um novo">
+                        <datalist id="project-list"></datalist>
+                    </div>
+                    <div>
+                        <label for="taskProjectColor" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Cor</label>
+                        <input type="color" id="taskProjectColor" value="#526D82" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark rounded-lg w-full h-[46px] p-1 cursor-pointer">
+                    </div>
+                </div>
                 <div class="mb-4">
                     <label for="taskAzureLink" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Link Azure DevOps (Opcional)</label>
                     <input type="url" id="taskAzureLink" placeholder="https://dev.azure.com/..." class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
@@ -300,6 +311,32 @@
                 start();
             }
 
+            const populateProjectInput = () => {
+                const projectList = document.getElementById('project-list');
+                const projects = new Map();
+                tasks.forEach(task => {
+                    if (task.project && !projects.has(task.project)) {
+                        projects.set(task.project, task.projectColor);
+                    }
+                });
+
+                projectList.innerHTML = '';
+                projects.forEach((color, name) => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    projectList.appendChild(option);
+                });
+
+                const projectInput = document.getElementById('taskProject');
+                const colorInput = document.getElementById('taskProjectColor');
+                projectInput.addEventListener('input', () => {
+                    const selectedProject = projectInput.value;
+                    if (projects.has(selectedProject)) {
+                        colorInput.value = projects.get(selectedProject);
+                    }
+                });
+            };
+
             // --- ELEMENTOS DOM ---
             const responsibleFilterEl = document.getElementById('responsibleFilter');
             const kanbanViewEl = document.getElementById('kanbanView');
@@ -327,7 +364,7 @@
                 const taskCard = document.createElement('div');
                 taskCard.className = 'task-card relative bg-white dark:bg-custom-darkest p-4 rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab';
                 taskCard.dataset.taskId = task.id;
-                
+
                 let approveButton = '';
                 if (task.status === 'homologation') {
                     approveButton = `
@@ -336,7 +373,7 @@
                         </button>
                     `;
                 }
-                
+
                 let azureLinkIcon = '';
                 if (task.azureLink) {
                     azureLinkIcon = `
@@ -344,6 +381,11 @@
                             <i data-lucide="external-link" class="w-4 h-4 pointer-events-none"></i>
                         </a>
                     `;
+                }
+
+                let projectTag = '';
+                if (task.project) {
+                    projectTag = `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>`;
                 }
 
                 taskCard.innerHTML = `
@@ -359,7 +401,10 @@
                                 <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
                             </button>
                         </div>
-                        <strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>
+                        <div class="flex items-center gap-2">
+                            ${projectTag}
+                            <strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>
+                        </div>
                     </div>
                 `;
                 return taskCard;
@@ -617,20 +662,25 @@
                 if (!taskToEdit) return;
 
                 editingTaskId = taskId;
-                
+
                 document.getElementById('modalTitle').textContent = 'Editar Tarefa';
                 document.getElementById('taskDescription').value = taskToEdit.description;
                 document.getElementById('taskResponsible').value = taskToEdit.responsible;
                 document.getElementById('taskAzureLink').value = taskToEdit.azureLink || '';
+                document.getElementById('taskProject').value = taskToEdit.project || '';
+                document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';
+
+                populateProjectInput();
 
                 taskHistoryModal.classList.add('hidden');
                 taskModal.classList.remove('hidden');
             };
 
             addTaskBtn.addEventListener('click', () => {
-                editingTaskId = null; // Garante que estamos no modo de criação
+                editingTaskId = null;
                 document.getElementById('modalTitle').textContent = 'Nova Tarefa';
                 document.getElementById('taskForm').reset();
+                populateProjectInput();
                 taskModal.classList.remove('hidden');
             });
             
@@ -662,42 +712,43 @@
 
             document.getElementById('taskForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
+
+                let projectName = document.getElementById('taskProject').value.trim();
+                if (projectName && !projectName.startsWith('#')) {
+                    projectName = '#' + projectName;
+                }
+
                 const taskPayload = {
                     description: document.getElementById('taskDescription').value,
                     responsible: document.getElementById('taskResponsible').value,
-                    azureLink: document.getElementById('taskAzureLink').value
+                    azureLink: document.getElementById('taskAzureLink').value,
+                    project: projectName,
+                    projectColor: document.getElementById('taskProjectColor').value
                 };
 
                 try {
                     let response;
                     if (editingTaskId) {
-                        // Modo de Edição
                         response = await fetch(`/api/updateTask/${editingTaskId}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload)
                         });
                     } else {
-                        // Modo de Criação
                         response = await fetch('/api/createTask', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload),
                         });
                     }
-
-                    if (!response.ok) {
-                        throw new Error('Falha ao salvar a tarefa.');
-                    }
+                    if (!response.ok) throw new Error('Falha ao salvar a tarefa.');
 
                     const savedTask = await response.json();
-                    taskToHighlightTemporarily = savedTask.id; // Guarda o ID para o destaque temporário
+                    taskToHighlightTemporarily = savedTask.id;
 
                     taskModal.classList.add('hidden');
                     e.target.reset();
                     editingTaskId = null;
-                    // Não é preciso chamar fetchAndRenderTasks() aqui, o SignalR fará isso.
-
                 } catch (error) {
                     console.error("Erro ao salvar tarefa:", error);
                 }

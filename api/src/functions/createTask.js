@@ -28,13 +28,15 @@ app.http('createTask', {
             }
             const newTask = {
                 id: uuidv4(),
-                description: taskData.description,
-                responsible: taskData.responsible,
-                azureLink: taskData.azureLink || '',
+                description: taskData.description, // Adiciona a Descrição
+                responsible: taskData.responsible, // Adiciona o Responsavel
+                azureLink: taskData.azureLink || '', // Adiciona o Link da Azure
+                project: taskData.project || '', // Adiciona o nome do projeto
+                projectColor: taskData.projectColor || '#526D82', // Adiciona a cor do projeto
                 status: 'todo',
                 createdAt: new Date().toISOString(),
                 history: [{ status: 'todo', timestamp: new Date().toISOString() }],
-                order: Date.now() // <-- Coloquei para ordenar por data na lista
+                order: Date.now()
             };
             await database.containers.createIfNotExists({ id: "Tasks", partitionKey: { paths: ["/id"] } });
             await container.items.create(newTask);
