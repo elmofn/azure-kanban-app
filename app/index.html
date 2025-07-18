@@ -90,6 +90,14 @@
                             <option value="all">Todos</option>
                         </select>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <label for="projectFilter" class="text-custom-medium" title="Filtrar por projeto">
+                            <i data-lucide="folder-kanban" class="w-5 h-5"></i>
+                        </label>
+                        <select id="projectFilter" class="bg-custom-dark border-none text-custom-light rounded-md focus:ring-custom-medium focus:ring-2 focus:outline-none py-2 pl-3 pr-8">
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <!-- Grupo da Direita: Ações e Configurações -->
@@ -246,6 +254,7 @@
             // --- ESTADO DA APLICAÇÃO ---
             let tasks = []; // A lista de tarefas agora começa vazia
             let taskToHighlightTemporarily = null;
+            let selectedProject = 'all';
             let selectedResponsible = 'all';
             let currentView = 'list';
             let lastInteractedTaskId = null;
@@ -342,6 +351,7 @@
             const kanbanViewEl = document.getElementById('kanbanView');
             const listViewEl = document.getElementById('listView');
             const viewSwitcherEl = document.getElementById('view-switcher');
+            const projectFilterEl = document.getElementById('projectFilter');
             const archivedTasksModalEl = document.getElementById('archivedTasksModal');
             const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
             const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
@@ -417,6 +427,9 @@
                 if (selectedResponsible !== 'all') {
                     activeTasks = activeTasks.filter(t => t.responsible === selectedResponsible);
                 }
+                if (selectedProject !== 'all') {
+                    activeTasks = activeTasks.filter(t => t.project === selectedProject);
+                }
 
                 const columns = [
                     { id: 'todo', name: 'A fazer' },
@@ -453,23 +466,24 @@
                 if (selectedResponsible !== 'all') {
                     activeTasks = activeTasks.filter(t => t.responsible === selectedResponsible);
                 }
-                
+                if (selectedProject !== 'all') {
+                    activeTasks = activeTasks.filter(t => t.project === selectedProject);
+                }
+
                 const tableBody = activeTasks.map(task => {
-                    let azureLinkIcon;
-                    if (task.azureLink) {
-                        azureLinkIcon = `
-                            <a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps">
-                                <i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i>
-                            </a>
-                        `;
-                    } else {
-                        // Placeholder para manter o alinhamento
-                        azureLinkIcon = `<div class="w-7 h-7"></div>`;
+                    let azureLinkIcon = task.azureLink 
+                        ? `<a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i></a>`
+                        : `<div class="w-7 h-7"></div>`;
+
+                    let projectTag = '';
+                    if (task.project) {
+                        projectTag = `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>`;
                     }
 
                     return `
                         <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
                             <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
+                            <td class="px-6 py-4 whitespace-nowrap">${projectTag}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${task.responsible}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${statusLabels[task.status] || task.status}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
@@ -494,6 +508,7 @@
                             <thead class="bg-custom-light dark:bg-custom-darkest/60">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Tarefa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Projeto</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Estado</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Criação</th>
@@ -502,17 +517,19 @@
                             </thead>
                             <tbody class="divide-y divide-custom-light dark:divide-custom-dark">
                                 ${tableBody}
-                                ${activeTasks.length === 0 ? '<tr><td colspan="5" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa encontrada.</td></tr>' : ''}
+                                ${activeTasks.length === 0 ? '<tr><td colspan="6" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa encontrada.</td></tr>' : ''}
                             </tbody>
                         </table>
                     </div>
                 `;
+
                 listViewEl.innerHTML = tableHtml;
                 lucide.createIcons();
             };
 
             const updateActiveView = () => {
                 populateResponsibleFilter();
+                populateProjectFilter();
                 
                 viewSwitcherEl.querySelectorAll('.view-btn').forEach(btn => {
                     if (btn.dataset.view === currentView) {
@@ -539,6 +556,19 @@
                         highlightTask(lastInteractedTaskId, currentView === 'kanban');
                     }, 0);
                 }
+            };
+
+            const populateProjectFilter = () => {
+                const projects = [...new Set(tasks.map(t => t.project).filter(Boolean))]; // Filtra valores vazios
+                const currentFilterValue = projectFilterEl.value;
+                projectFilterEl.innerHTML = '<option value="all">Todos os Projetos</option>';
+                projects.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p;
+                    option.textContent = p;
+                    projectFilterEl.appendChild(option);
+                });
+                projectFilterEl.value = currentFilterValue;
             };
             
             const renderArchivedTasks = () => {
@@ -617,6 +647,11 @@
                 });
                 responsibleFilterEl.value = currentFilterValue;
             };
+
+            projectFilterEl.addEventListener('change', (e) => {
+                selectedProject = e.target.value;
+                updateActiveView();
+            });
 
             // --- LÓGICA DO TEMA ---
             const themeToggle = document.getElementById('theme-toggle');
