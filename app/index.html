@@ -113,11 +113,16 @@
         <main id="main-content" class="container mx-auto p-4 lg:p-6">
             <!-- Visualização Kanban -->
             <div id="kanbanView" class="hidden">
-                <div id="board-columns" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div id="board-columns" class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <!-- Coluna A fazer -->
                     <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
                         <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">A fazer</h2>
                         <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="todo"></div>
+                    </div>
+                    <!-- Coluna Parado -->
+                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Parado</h2>
+                        <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="stopped"></div>
                     </div>
                     <!-- Coluna Em Andamento -->
                     <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
@@ -304,7 +309,7 @@
             const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
             const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
             const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-            const statusLabels = { todo: 'A fazer', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
+            const statusLabels = { todo: 'A fazer', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
 
             // --- FUNÇÕES DE RENDERIZAÇÃO ---
             const formatDate = (dateString) => {
@@ -370,6 +375,7 @@
 
                 const columns = [
                     { id: 'todo', name: 'A fazer' },
+                    { id: 'stopped', name: 'Parado' },
                     { id: 'inprogress', name: 'Em Andamento' },
                     { id: 'homologation', name: 'Em Homologação' },
                 ];
