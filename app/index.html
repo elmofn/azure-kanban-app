@@ -51,6 +51,38 @@
          .dark tr.highlight {
              background-color: #526D82 !important;
         }
+        /* Estilos do Indicador de Carregamento */
+        .loader {
+        width: fit-content;
+        font-weight: bold;
+        font-family: monospace;
+        font-size: 30px;
+        /* O fundo que "varre" o texto. Preto no modo claro. */
+        background:linear-gradient(90deg,#000 50%,#0000 0) right/200% 100%;
+        animation: l21 2s infinite linear;
+        }
+        .dark .loader {
+            /* No modo escuro, o fundo que "varre" é a cor clara do texto. */
+            background:linear-gradient(90deg,#DDE6ED 50%,#0000 0) right/200% 100%;
+        }
+        .loader::before {
+        content :"Carregando...";
+        color: #0000; /* Torna o texto transparente */
+        padding: 0 5px;
+        background: inherit; /* Herda o fundo animado do pai */
+        /* Cria um novo fundo por baixo, que é revelado. Branco no modo claro. */
+        background-image: linear-gradient(90deg,#fff 50%,#000 0);
+        -webkit-background-clip:text;
+                background-clip:text;
+        }
+        .dark .loader::before {
+            /* No modo escuro, o fundo revelado é a cor escura do texto. */
+            background-image: linear-gradient(90deg,#27374D 50%,#DDE6ED 0);
+        }
+
+        @keyframes l21{
+        100%{background-position: left}
+        }
     </style>
     <script>
         tailwind.config = { 
@@ -119,6 +151,10 @@
 
         <!-- Conteúdo Principal -->
         <main id="main-content" class="container mx-auto p-4 lg:p-6">
+            <!-- Indicador de Carregamento -->
+            <div id="loader-container" class="flex justify-center items-center py-20">
+                <div class="loader"></div>
+            </div>
             <!-- Visualização Kanban -->
             <div id="kanbanView" class="hidden">
                 <div id="board-columns" class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -269,10 +305,15 @@
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     tasks = await response.json();
-                    updateActiveView(); // Renderiza a vista principal
-                    renderArchivedTasks(); // Renderiza o modal de arquivados
+
+                    // Esconde o loader e mostra o conteúdo principal
+                    loaderContainerEl.classList.add('hidden');
+                    updateActiveView(); 
+                    renderArchivedTasks();
+
                 } catch (error) {
                     console.error("Falha ao buscar tarefas:", error);
+                    loaderContainerEl.innerHTML = '<p class="text-red-500">Falha ao carregar as tarefas.</p>';
                 }
             }
 
@@ -351,6 +392,7 @@
             const kanbanViewEl = document.getElementById('kanbanView');
             const listViewEl = document.getElementById('listView');
             const viewSwitcherEl = document.getElementById('view-switcher');
+            const loaderContainerEl = document.getElementById('loader-container');
             const projectFilterEl = document.getElementById('projectFilter');
             const archivedTasksModalEl = document.getElementById('archivedTasksModal');
             const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
