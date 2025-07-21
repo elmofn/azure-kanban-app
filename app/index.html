@@ -243,7 +243,12 @@
                         <div id="project-suggestions" class="absolute z-10 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                     </div>
                     <div class="relative">
-                        <label for="taskProjectColor" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Cor</label>
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="color-picker-button" class="block text-sm font-bold text-custom-dark dark:text-custom-medium">Cor</label>
+                            <button type="button" id="native-color-picker-trigger" title="Escolher cor específica">
+                                <i data-lucide="palette" class="w-5 h-5 text-custom-dark dark:text-custom-medium hover:text-custom-darkest dark:hover:text-white transition-colors"></i>
+                            </button>
+                        </div>
                         <!-- Este é o botão visível que mostra a cor selecionada -->
                         <button type="button" id="color-picker-button" class="w-full h-[46px] rounded-lg border border-custom-medium dark:border-custom-dark"></button>
                         <!-- O input original fica escondido, mas ainda guarda o valor -->
@@ -738,29 +743,25 @@
                 const colorInput = document.getElementById('taskProjectColor');
                 const colorButton = document.getElementById('color-picker-button');
                 const colorPalette = document.getElementById('color-palette');
+                const nativePickerTrigger = document.getElementById('native-color-picker-trigger'); // Novo elemento
 
-                // Paleta de cores pré-definida
                 const colors = [
                     '#526D82', '#9DB2BF', '#27374D', '#1D5B79', '#468B97', '#EF6262',
                     '#F3AA60', '#F9D949', '#68B984', '#3D5656', '#A25B5B', '#635985'
                 ];
 
-                // Preenche a paleta com as cores
                 colorPalette.innerHTML = colors.map(color => 
                     `<div class="w-full h-8 rounded-md cursor-pointer color-swatch" style="background-color: ${color};" data-color="${color}"></div>`
                 ).join('');
 
-                // Sincroniza a cor do botão com a cor do input
                 const syncColor = () => {
                     colorButton.style.backgroundColor = colorInput.value;
                 };
 
-                // Evento para abrir/fechar a paleta
                 colorButton.addEventListener('click', () => {
                     colorPalette.classList.toggle('hidden');
                 });
 
-                // Evento para selecionar uma cor da paleta
                 colorPalette.addEventListener('click', (e) => {
                     const swatch = e.target.closest('.color-swatch');
                     if (swatch) {
@@ -770,10 +771,19 @@
                     }
                 });
 
-                // Sincroniza a cor inicial
+                // Aciona o seletor de cores nativo do navegador
+                nativePickerTrigger.addEventListener('click', () => {
+                    colorInput.click();
+                });
+
+                // Atualiza a cor do botão quando uma cor é escolhida no seletor nativo
+                colorInput.addEventListener('input', () => {
+                    syncColor();
+                });
+
                 syncColor();
             };
-            
+                        
             const renderArchivedTasks = () => {
                 const listEl = document.getElementById('archived-tasks-list');
                 listEl.innerHTML = '';
@@ -1170,6 +1180,23 @@
                         console.error("Erro ao restaurar tarefa:", error);
                         showToast('Falha ao restaurar a tarefa.', 'error');
                     }
+                }
+            });
+
+            // Listener para fechar pop-ups (sugestões e paleta de cores)
+            document.addEventListener('click', (e) => {
+                const responsibleInput = document.getElementById('taskResponsible');
+                const projectInput = document.getElementById('taskProject');
+                const colorButton = document.getElementById('color-picker-button');
+
+                if (!responsibleInput.contains(e.target)) {
+                    document.getElementById('responsible-suggestions').classList.add('hidden');
+                }
+                if (!projectInput.contains(e.target)) {
+                    document.getElementById('project-suggestions').classList.add('hidden');
+                }
+                if (!colorButton.contains(e.target)) {
+                    document.getElementById('color-palette').classList.add('hidden');
                 }
             });
 
