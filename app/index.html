@@ -231,18 +231,16 @@
                     <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
                     <input type="text" id="taskDescription" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
                 </div>
-                <div class="mb-4 relative"> <!-- 'relative' para posicionar a lista -->
+                <div class="mb-4 relative">
                     <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável</label>
-                    <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required placeholder="Selecione ou digite um nome" autocomplete="off">
-                    <!-- Novo contentor para as sugestões -->
-                    <div id="responsible-suggestions" class="absolute z-10 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
+                    <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required placeholder="Digite os nomes separados por vírgula" autocomplete="off">
+                    <div id="responsible-suggestions" class="absolute z-20 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                 </div>
-
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-2">
+                    <div class="md:col-span-2 relative">
                         <label for="taskProject" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Projeto</label>
-                        <input type="text" id="taskProject" list="project-list" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" placeholder="Selecione ou crie um novo">
-                        <datalist id="project-list"></datalist>
+                        <input type="text" id="taskProject" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" placeholder="Selecione ou crie um novo" autocomplete="off">
+                        <div id="project-suggestions" class="absolute z-10 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                     </div>
                     <div>
                         <label for="taskProjectColor" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Cor</label>
@@ -397,33 +395,8 @@
                 start();
             }
 
-            const populateProjectInput = () => {
-                const projectList = document.getElementById('project-list');
-                const projects = new Map();
-                tasks.forEach(task => {
-                    if (task.project && !projects.has(task.project)) {
-                        projects.set(task.project, task.projectColor);
-                    }
-                });
-
-                projectList.innerHTML = '';
-                projects.forEach((color, name) => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    projectList.appendChild(option);
-                });
-
-                const projectInput = document.getElementById('taskProject');
-                const colorInput = document.getElementById('taskProjectColor');
-                projectInput.addEventListener('input', () => {
-                    const selectedProject = projectInput.value;
-                    if (projects.has(selectedProject)) {
-                        colorInput.value = projects.get(selectedProject);
-                    }
-                });
-            };
-
-            const populateResponsibleInput = () => {
+            // NOVA FUNÇÃO PARA SUGESTÕES DE RESPONSÁVEIS (COM MULTI-SELEÇÃO)
+            const setupResponsibleSuggestions = () => {
                 const input = document.getElementById('taskResponsible');
                 const suggestionsContainer = document.getElementById('responsible-suggestions');
                 const allResponsibles = [...new Set(tasks.flatMap(t => t.responsible).filter(Boolean))];
@@ -440,8 +413,62 @@
                         suggestionItem.className = 'p-2 cursor-pointer hover:bg-custom-light dark:hover:bg-custom-dark';
                         suggestionItem.textContent = name;
                         suggestionItem.addEventListener('mousedown', (e) => {
-                            e.preventDefault(); // Impede que o 'blur' do input feche a lista antes de o clique ser registado
+                            e.preventDefault();
+                            const currentValues = input.value.split(',').map(v => v.trim());
+                            currentValues.pop(); // Remove o valor que está a ser digitado
+                            currentValues.push(name); // Adiciona o nome selecionado
+                            input.value = currentValues.join(', ') + ', '; // Adiciona vírgula para o próximo
+                            suggestionsContainer.classList.add('hidden');
+                            input.focus();
+                        });
+                        suggestionsContainer.appendChild(suggestionItem);
+                    });
+                    suggestionsContainer.classList.remove('hidden');
+                };
+
+                const updateSuggestions = () => {
+                    const valueParts = input.value.split(',');
+                    const currentQuery = valueParts[valueParts.length - 1].trim().toLowerCase();
+                    if (currentQuery === '') {
+                        showSuggestions(allResponsibles);
+                    } else {
+                        const filtered = allResponsibles.filter(name => name.toLowerCase().includes(currentQuery));
+                        showSuggestions(filtered);
+                    }
+                };
+
+                input.addEventListener('focus', updateSuggestions);
+                input.addEventListener('input', updateSuggestions);
+            };
+
+            // NOVA FUNÇÃO PARA SUGESTÕES DE PROJETOS
+            const setupProjectSuggestions = () => {
+                const input = document.getElementById('taskProject');
+                const suggestionsContainer = document.getElementById('project-suggestions');
+                const colorInput = document.getElementById('taskProjectColor');
+                const projects = new Map();
+                tasks.forEach(task => {
+                    if (task.project && !projects.has(task.project)) {
+                        projects.set(task.project, task.projectColor);
+                    }
+                });
+                const allProjects = Array.from(projects.keys());
+
+                const showSuggestions = (filteredData) => {
+                    suggestionsContainer.innerHTML = '';
+                    if (filteredData.length === 0) {
+                        suggestionsContainer.classList.add('hidden');
+                        return;
+                    }
+
+                    filteredData.forEach(name => {
+                        const suggestionItem = document.createElement('div');
+                        suggestionItem.className = 'p-2 cursor-pointer hover:bg-custom-light dark:hover:bg-custom-dark';
+                        suggestionItem.textContent = name;
+                        suggestionItem.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
                             input.value = name;
+                            colorInput.value = projects.get(name);
                             suggestionsContainer.classList.add('hidden');
                         });
                         suggestionsContainer.appendChild(suggestionItem);
@@ -449,22 +476,14 @@
                     suggestionsContainer.classList.remove('hidden');
                 };
 
-                input.addEventListener('focus', () => {
-                    showSuggestions(allResponsibles);
-                });
-
-                input.addEventListener('input', () => {
+                const updateSuggestions = () => {
                     const query = input.value.toLowerCase();
-                    const filtered = allResponsibles.filter(name => name.toLowerCase().includes(query));
+                    const filtered = allProjects.filter(name => name.toLowerCase().includes(query));
                     showSuggestions(filtered);
-                });
+                };
 
-                // Fecha a lista se o usuário clicar fora
-                document.addEventListener('click', (e) => {
-                    if (!input.contains(e.target)) {
-                        suggestionsContainer.classList.add('hidden');
-                    }
-                });
+                input.addEventListener('focus', updateSuggestions);
+                input.addEventListener('input', updateSuggestions);
             };
 
             // --- ELEMENTOS DOM ---
@@ -860,8 +879,8 @@
                 document.getElementById('taskProject').value = taskToEdit.project || '';
                 document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';
 
-                populateResponsibleInput();
-                populateProjectInput();
+                setupResponsibleSuggestions();
+                setupProjectSuggestions();
 
                 taskHistoryModal.classList.add('hidden');
                 taskModal.classList.remove('hidden');
@@ -871,8 +890,8 @@
                 editingTaskId = null;
                 document.getElementById('modalTitle').textContent = 'Nova Tarefa';
                 document.getElementById('taskForm').reset();
-                populateResponsibleInput();
-                populateProjectInput();
+                setupResponsibleSuggestions();
+                setupProjectSuggestions();
                 taskModal.classList.remove('hidden');
             });
             
@@ -1102,6 +1121,17 @@
                         console.error("Erro ao restaurar tarefa:", error);
                         showToast('Falha ao restaurar a tarefa.', 'error');
                     }
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                const responsibleInput = document.getElementById('taskResponsible');
+                const projectInput = document.getElementById('taskProject');
+                if (!responsibleInput.contains(e.target)) {
+                    document.getElementById('responsible-suggestions').classList.add('hidden');
+                }
+                if (!projectInput.contains(e.target)) {
+                    document.getElementById('project-suggestions').classList.add('hidden');
                 }
             });
 
