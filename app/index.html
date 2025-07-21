@@ -242,9 +242,16 @@
                         <input type="text" id="taskProject" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" placeholder="Selecione ou crie um novo" autocomplete="off">
                         <div id="project-suggestions" class="absolute z-10 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                     </div>
-                    <div>
+                    <div class="relative">
                         <label for="taskProjectColor" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Cor</label>
-                        <input type="color" id="taskProjectColor" value="#526D82" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark rounded-lg w-full h-[46px] p-1 cursor-pointer">
+                        <!-- Este é o botão visível que mostra a cor selecionada -->
+                        <button type="button" id="color-picker-button" class="w-full h-[46px] rounded-lg border border-custom-medium dark:border-custom-dark"></button>
+                        <!-- O input original fica escondido, mas ainda guarda o valor -->
+                        <input type="color" id="taskProjectColor" value="#526D82" class="absolute top-0 left-0 w-0 h-0 opacity-0">
+                        <!-- O contentor da nossa paleta de cores personalizada -->
+                        <div id="color-palette" class="absolute z-30 mt-1 w-full p-2 bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md shadow-lg hidden grid grid-cols-6 gap-2">
+                            <!-- As cores serão inseridas aqui pelo JavaScript -->
+                        </div>
                     </div>
                 </div>
                 <div class="mb-4">
@@ -726,6 +733,46 @@
                 });
                 projectFilterEl.value = currentFilterValue;
             };
+
+            const setupCustomColorPicker = () => {
+                const colorInput = document.getElementById('taskProjectColor');
+                const colorButton = document.getElementById('color-picker-button');
+                const colorPalette = document.getElementById('color-palette');
+
+                // Paleta de cores pré-definida
+                const colors = [
+                    '#526D82', '#9DB2BF', '#27374D', '#1D5B79', '#468B97', '#EF6262',
+                    '#F3AA60', '#F9D949', '#68B984', '#3D5656', '#A25B5B', '#635985'
+                ];
+
+                // Preenche a paleta com as cores
+                colorPalette.innerHTML = colors.map(color => 
+                    `<div class="w-full h-8 rounded-md cursor-pointer color-swatch" style="background-color: ${color};" data-color="${color}"></div>`
+                ).join('');
+
+                // Sincroniza a cor do botão com a cor do input
+                const syncColor = () => {
+                    colorButton.style.backgroundColor = colorInput.value;
+                };
+
+                // Evento para abrir/fechar a paleta
+                colorButton.addEventListener('click', () => {
+                    colorPalette.classList.toggle('hidden');
+                });
+
+                // Evento para selecionar uma cor da paleta
+                colorPalette.addEventListener('click', (e) => {
+                    const swatch = e.target.closest('.color-swatch');
+                    if (swatch) {
+                        colorInput.value = swatch.dataset.color;
+                        syncColor();
+                        colorPalette.classList.add('hidden');
+                    }
+                });
+
+                // Sincroniza a cor inicial
+                syncColor();
+            };
             
             const renderArchivedTasks = () => {
                 const listEl = document.getElementById('archived-tasks-list');
@@ -878,6 +925,7 @@
                 document.getElementById('taskAzureLink').value = taskToEdit.azureLink || '';
                 document.getElementById('taskProject').value = taskToEdit.project || '';
                 document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';
+                document.getElementById('color-picker-button').style.backgroundColor = taskToEdit.projectColor || '#526D82';
 
                 setupResponsibleSuggestions();
                 setupProjectSuggestions();
@@ -892,6 +940,7 @@
                 document.getElementById('taskForm').reset();
                 setupResponsibleSuggestions();
                 setupProjectSuggestions();
+                document.getElementById('color-picker-button').style.backgroundColor = '#526D82';
                 taskModal.classList.remove('hidden');
             });
             
@@ -1208,6 +1257,7 @@
             fetchAndRenderTasks(); // <-- PEGA AS TAKS PRA NÓS bb
             connectToSignalR(); // <-- Colaborar em tempo real
             initializeDragAndDrop();
+            setupCustomColorPicker(); // <-- Componente de cores padrão
             lucide.createIcons();
         });
     </script>
