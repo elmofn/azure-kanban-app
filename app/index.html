@@ -83,6 +83,41 @@
         @keyframes l21{
         100%{background-position: left}
         }
+        .toast {
+            animation: toast-fade-in-out 3s ease-in-out forwards;
+        }
+        @keyframes toast-fade-in-out {
+            0% { opacity: 0; transform: translateX(100%); }
+            15% { opacity: 1; transform: translateX(0); }
+            85% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(100%); }
+        }
+        .drop-target-highlight {
+            border: 2px dashed #526D82 !important;
+            background-color: rgba(157, 178, 191, 0.2) !important;
+        }
+        /* Animação para Novos Cartões */
+        @keyframes card-fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .task-card.new-card { /* Usamos uma classe específica para animar apenas os novos */
+            animation: card-fade-in 0.5s ease forwards;
+        }
+        .sortable-drag {
+            opacity: 0.9 !important;
+            /* Adicionamos a nossa nova animação aqui */
+            animation: wobble 0.6s infinite ease-in-out;
+            transform-origin: top center; /* Faz o cartão balançar a partir do topo */
+        }
+
+        /* Definição da animação de balanço */
+        @keyframes wobble {
+            0% { transform: rotate(0deg); }
+            33% { transform: rotate(2deg); }
+            66% { transform: rotate(-2deg); }
+            100% { transform: rotate(0deg); }
+        }
     </style>
     <script>
         tailwind.config = { 
@@ -427,55 +462,56 @@
             };
 
             const createTaskElement = (task) => {
+                // O cartão principal agora é um contentor flexível com overflow escondido
+                // para que os cantos do rodapé fiquem perfeitamente arredondados.
                 const taskCard = document.createElement('div');
-                taskCard.className = 'task-card relative bg-white dark:bg-custom-darkest p-4 rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab';
+                taskCard.className = 'task-card bg-white dark:bg-custom-darkest rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab flex flex-col overflow-hidden';
                 taskCard.dataset.taskId = task.id;
+
+                // O conteúdo principal da tarefa é colocado num div separado para ter o seu próprio padding.
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'p-4 relative'; // A posição relativa é para o botão de aprovar.
 
                 let approveButton = '';
                 if (task.status === 'homologation') {
-                    approveButton = `
-                        <button class="approve-btn absolute top-2 right-2 bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-700 dark:text-yellow-400 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar">
-                            <i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i>
-                        </button>
-                    `;
+                    // Ajustamos a posição do botão para se alinhar com o novo padding.
+                    approveButton = `<button class="approve-btn absolute top-4 right-4 bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-700 dark:text-yellow-400 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar"><i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i></button>`;
                 }
 
                 let azureLinkIcon = '';
                 if (task.azureLink) {
-                    azureLinkIcon = `
-                        <a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps">
-                            <i data-lucide="external-link" class="w-4 h-4 pointer-events-none"></i>
-                        </a>
-                    `;
+                    azureLinkIcon = `<a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-4 h-4 pointer-events-none"></i></a>`;
                 }
 
-                let projectTag = '';
-                if (task.project) {
-                    projectTag = `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>`;
-                }
-
-                taskCard.innerHTML = `
+                contentDiv.innerHTML = `
                     <p class="text-custom-darkest dark:text-custom-light pr-8 description-truncate" title="${task.description}">${task.description}</p>
                     ${approveButton}
                     <div class="mt-3 pt-2 border-t border-custom-medium/50 dark:border-custom-dark flex justify-between items-center">
                         <div class="flex items-center gap-1">
-                            <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico">
-                                <i data-lucide="info" class="w-4 h-4 pointer-events-none"></i>
-                            </button>
+                            <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico"><i data-lucide="info" class="w-4 h-4 pointer-events-none"></i></button>
                             ${azureLinkIcon}
-                            <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa">
-                                <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
-                            </button>
+                            <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
                         </div>
-                        <div class="flex items-center gap-2">
-                            ${projectTag}
-                            <strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>
-                        </div>
+                        <strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>
                     </div>
                 `;
+
+                // Adicionamos o conteúdo principal ao cartão.
+                taskCard.appendChild(contentDiv);
+
+                // Se a tarefa tiver um projeto, criamos e adicionamos a barra de rodapé.
+                if (task.project) {
+                    const projectBar = document.createElement('div');
+                    // MUDANÇA: Removemos 'font-bold' e diminuímos o padding vertical (py-0.5)
+                    projectBar.className = 'text-xs text-white px-4 py-0.5 mt-auto'; 
+                    projectBar.style.backgroundColor = task.projectColor;
+                    projectBar.textContent = task.project;
+                    taskCard.appendChild(projectBar);
+                }
+
                 return taskCard;
             };
-            
+                        
             const renderKanbanView = () => {
                 document.querySelectorAll('.task-list').forEach(list => list.innerHTML = '');
                 
@@ -709,6 +745,22 @@
                 updateActiveView();
             });
 
+            const showToast = (message, type = 'success') => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+
+                toast.className = `toast text-white font-bold py-2 px-4 rounded-lg shadow-lg ${bgColor}`;
+                toast.textContent = message;
+
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            };
+
+
             // --- LÓGICA DO TEMA ---
             const themeToggle = document.getElementById('theme-toggle');
             const themeIconLight = document.getElementById('theme-icon-light');
@@ -821,29 +873,36 @@
 
                 try {
                     let response;
+                    let successMessage = ''; // Variável para a mensagem de sucesso
+
                     if (editingTaskId) {
                         response = await fetch(`/api/updateTask/${editingTaskId}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload)
                         });
+                        successMessage = 'Tarefa atualizada com sucesso!';
                     } else {
                         response = await fetch('/api/createTask', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload),
                         });
+                        successMessage = 'Tarefa criada com sucesso!';
                     }
                     if (!response.ok) throw new Error('Falha ao salvar a tarefa.');
 
                     const savedTask = await response.json();
                     taskToHighlightTemporarily = savedTask.id;
+                    
+                    showToast(successMessage);
 
                     taskModal.classList.add('hidden');
                     e.target.reset();
                     editingTaskId = null;
                 } catch (error) {
                     console.error("Erro ao salvar tarefa:", error);
+                    showToast('Falha ao salvar a tarefa.', 'error'); 
                 }
             });
 
@@ -865,6 +924,8 @@
                             throw new Error('Falha ao excluir a tarefa.');
                         }
 
+                        showToast('Tarefa excluída com sucesso!');
+
                         taskIdToDelete = null;
                         deleteConfirmModalEl.classList.add('hidden');
 
@@ -873,6 +934,7 @@
 
                     } catch (error) {
                         console.error("Erro ao excluir tarefa:", error);
+                        showToast('Falha ao excluir a tarefa.', 'error');
                     }
                 }
             });
@@ -885,26 +947,29 @@
 
             // --- LÓGICA DE DRAG AND DROP E AÇÕES ---
             const highlightTask = (taskId, temporary = true) => {
-                const previouslyHighlighted = document.querySelector('.highlight');
-                if (previouslyHighlighted) previouslyHighlighted.classList.remove('highlight');
+                document.querySelectorAll('.highlight, .new-card').forEach(el => {
+                    el.classList.remove('highlight');
+                    el.classList.remove('new-card');
+                });
 
                 if (!taskId) return;
-
                 const selector = `.task-card[data-task-id="${taskId}"], .list-row[data-task-id="${taskId}"]`;
                 const elementToHighlight = document.querySelector(selector);
-                
+
                 if (elementToHighlight) {
-                    elementToHighlight.classList.add('highlight');
+                    const classToAdd = temporary ? 'new-card' : 'highlight';
+                    elementToHighlight.classList.add(classToAdd);
+
+                    // Timer para o destaque temporário
                     if (temporary) {
                         setTimeout(() => {
-                           if(elementToHighlight.classList.contains('highlight')) {
-                               elementToHighlight.classList.remove('highlight');
-                           }
-                        }, 1500);
+                            if (elementToHighlight.classList.contains('new-card')) {
+                                elementToHighlight.classList.remove('new-card');
+                            }
+                        }, 1500); // Remove a classe após 1.5 segundos
                     }
                 }
             };
-
             const initializeDragAndDrop = () => {
                 document.querySelectorAll('.task-list').forEach(list => {
                     new Sortable(list, {
@@ -912,6 +977,9 @@
                         animation: 150,
                         ghostClass: 'sortable-ghost',
                         dragClass: 'sortable-drag',
+                        dragoverClass: 'drop-target-highlight',
+                        forceFallback: true,   // Força o uso do clone para permitir a animação
+                        fallbackOnBody: true,  // Garante que o clone siga o rato por todo o ecrã
                         onEnd: async function (evt) {
                             const taskId = evt.item.dataset.taskId;
                             taskToHighlightTemporarily = taskId; // Guarda o ID para o destaque temporário
@@ -966,6 +1034,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ status: 'done' })
                         });
+                        showToast('Tarefa arquivada!');
                     } catch (error) { console.error("Erro ao arquivar tarefa:", error); }
                 } 
                 // Ação de Ver Informações
@@ -987,11 +1056,59 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ status: 'todo' })
                         });
+                        showToast('Tarefa restaurada com sucesso!');
                         archivedTasksModalEl.classList.add('hidden');
                     } catch (error) { console.error("Erro ao restaurar tarefa:", error); }
                 }
             });
 
+            document.getElementById('main-content').addEventListener('dblclick', (e) => {
+                const descriptionP = e.target.closest('.task-card .description-truncate');
+                if (!descriptionP) return;
+
+                const taskCard = descriptionP.closest('.task-card');
+                const taskId = taskCard.dataset.taskId;
+                const originalText = tasks.find(t => t.id === taskId)?.description || '';
+
+                const input = document.createElement('textarea');
+                input.className = 'w-full h-16 p-1 border rounded bg-white/80 dark:bg-custom-dark/80 text-sm';
+                input.value = originalText;
+
+                descriptionP.replaceWith(input);
+                input.focus();
+
+                const saveChanges = async () => {
+                    const newText = input.value.trim();
+                    if (newText && newText !== originalText) {
+                        taskToHighlightTemporarily = taskId;
+                        try {
+                            await fetch(`/api/updateTask/${taskId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ description: newText })
+                            });
+                            showToast('Descrição atualizada!');
+                        } catch (error) {
+                            console.error("Erro ao atualizar a descrição:", error);
+                            showToast('Falha ao atualizar.', 'error');
+                        }
+                    } else {
+                        // Se não houver alterações, a atualização do SignalR irá restaurar o parágrafo
+                        await fetchAndRenderTasks();
+                    }
+                };
+
+                input.addEventListener('blur', saveChanges);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        input.blur();
+                    } else if (e.key === 'Escape') {
+                        // Cancela a edição. A atualização do SignalR irá restaurar.
+                        fetchAndRenderTasks();
+                    }
+                });
+            });
 
             responsibleFilterEl.addEventListener('change', (e) => {
                 selectedResponsible = e.target.value;
@@ -1003,7 +1120,7 @@
                 if (view && view !== currentView) {
                     currentView = view;
 
-                    // CORREÇÃO: Se estamos a mudar para o Kanban, limpa qualquer seleção anterior.
+                    // CORREÇÃO: Se mudar para o Kanban, limpa qualquer seleção anterior.
                     if (currentView === 'kanban') {
                         lastInteractedTaskId = null;
                         highlightTask(null);
@@ -1021,5 +1138,7 @@
             lucide.createIcons();
         });
     </script>
+    <!--Toasts-->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
 </body>
 </html>
