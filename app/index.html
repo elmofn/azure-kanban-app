@@ -460,7 +460,7 @@
             };
 
             const createTaskElement = (task) => {
-                // O cartão principal agora é um contentor flexível com overflow escondido
+                // O cartão principal é um contentor flexível com overflow escondido
                 // para que os cantos do rodapé fiquem perfeitamente arredondados.
                 const taskCard = document.createElement('div');
                 taskCard.className = 'task-card bg-white dark:bg-custom-darkest rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab flex flex-col overflow-hidden';
@@ -468,17 +468,30 @@
 
                 // O conteúdo principal da tarefa é colocado num div separado para ter o seu próprio padding.
                 const contentDiv = document.createElement('div');
-                contentDiv.className = 'p-4 relative'; // A posição relativa é para o botão de aprovar.
+                contentDiv.className = 'p-4 relative';
 
                 let approveButton = '';
                 if (task.status === 'homologation') {
-                    // Ajustamos a posição do botão para se alinhar com o novo padding.
                     approveButton = `<button class="approve-btn absolute top-4 right-4 bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-700 dark:text-yellow-400 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar"><i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i></button>`;
                 }
 
                 let azureLinkIcon = '';
                 if (task.azureLink) {
                     azureLinkIcon = `<a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-4 h-4 pointer-events-none"></i></a>`;
+                }
+
+                // Lógica para exibir os múltiplos responsáveis
+                let responsibleDisplay = '';
+                if (Array.isArray(task.responsible) && task.responsible.length > 0) {
+                    const primaryResponsible = task.responsible[0];
+                    const otherResponsiblesCount = task.responsible.length - 1;
+                    responsibleDisplay = `<strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${primaryResponsible}</strong>`;
+                    if (otherResponsiblesCount > 0) {
+                        responsibleDisplay += `<span class="ml-1 text-xs font-bold bg-custom-medium text-custom-darkest rounded-full px-1.5 py-0.5" title="${task.responsible.slice(1).join(', ')}">+${otherResponsiblesCount}</span>`;
+                    }
+                } else {
+                    // Fallback para tarefas antigas que possam ter o responsável como uma string
+                    responsibleDisplay = `<strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>`;
                 }
 
                 contentDiv.innerHTML = `
@@ -490,7 +503,9 @@
                             ${azureLinkIcon}
                             <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
                         </div>
-                        <strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>
+                        <div class="flex items-center gap-2">
+                            ${responsibleDisplay}
+                        </div>
                     </div>
                 `;
 
@@ -500,8 +515,7 @@
                 // Se a tarefa tiver um projeto, criamos e adicionamos a barra de rodapé.
                 if (task.project) {
                     const projectBar = document.createElement('div');
-                    // MUDANÇA: Removemos 'font-bold' e diminuímos o padding vertical (py-0.5)
-                    projectBar.className = 'text-xs text-white px-4 py-0.5 mt-auto'; 
+                    projectBar.className = 'text-xs text-white px-4 py-0.5 mt-auto';
                     projectBar.style.backgroundColor = task.projectColor;
                     projectBar.textContent = task.project;
                     taskCard.appendChild(projectBar);
@@ -515,7 +529,7 @@
                 
                 let activeTasks = tasks.filter(t => t.status !== 'done');
                 if (selectedResponsible !== 'all') {
-                    activeTasks = activeTasks.filter(t => t.responsible === selectedResponsible);
+                    activeTasks = activeTasks.filter(t => Array.isArray(t.responsible) && t.responsible.includes(selectedResponsible));
                 }
                 if (selectedProject !== 'all') {
                     activeTasks = activeTasks.filter(t => t.project === selectedProject);
@@ -554,7 +568,7 @@
             const renderListView = () => {
                 let activeTasks = tasks.filter(t => t.status !== 'done');
                 if (selectedResponsible !== 'all') {
-                    activeTasks = activeTasks.filter(t => t.responsible === selectedResponsible);
+                    activeTasks = activeTasks.filter(t => Array.isArray(t.responsible) && t.responsible.includes(selectedResponsible));
                 }
                 if (selectedProject !== 'all') {
                     activeTasks = activeTasks.filter(t => t.project === selectedProject);
@@ -726,7 +740,8 @@
             };
 
             const populateResponsibleFilter = () => {
-                const responsibles = [...new Set(tasks.map(t => t.responsible))];
+                // Usa flatMap para achatar todos os arrays de responsáveis num único array
+                const responsibles = [...new Set(tasks.flatMap(t => t.responsible).filter(Boolean))];
                 const currentFilterValue = responsibleFilterEl.value;
                 responsibleFilterEl.innerHTML = '<option value="all">Todos</option>';
                 responsibles.forEach(r => {
@@ -806,7 +821,8 @@
 
                 document.getElementById('modalTitle').textContent = 'Editar Tarefa';
                 document.getElementById('taskDescription').value = taskToEdit.description;
-                document.getElementById('taskResponsible').value = taskToEdit.responsible;
+                // Converte o array de volta para uma string para o input
+                document.getElementById('taskResponsible').value = Array.isArray(taskToEdit.responsible) ? taskToEdit.responsible.join(', ') : taskToEdit.responsible;
                 document.getElementById('taskAzureLink').value = taskToEdit.azureLink || '';
                 document.getElementById('taskProject').value = taskToEdit.project || '';
                 document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';

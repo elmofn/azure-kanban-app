@@ -26,13 +26,17 @@ app.http('createTask', {
             if (!taskData.description || !taskData.responsible) {
                 return { status: 400, body: "Descrição e responsável são obrigatórios." };
             }
+
+            // Transforma a string de responsáveis num array, removendo espaços extra
+            const responsibles = taskData.responsible.split(',').map(name => name.trim());
+
             const newTask = {
                 id: uuidv4(),
-                description: taskData.description, // Adiciona a Descrição
-                responsible: taskData.responsible, // Adiciona o Responsavel
-                azureLink: taskData.azureLink || '', // Adiciona o Link da Azure
-                project: taskData.project || '', // Adiciona o nome do projeto
-                projectColor: taskData.projectColor || '#526D82', // Adiciona a cor do projeto
+                description: taskData.description,
+                responsible: responsibles, // Guarda como um array
+                azureLink: taskData.azureLink || '',
+                project: taskData.project || '',
+                projectColor: taskData.projectColor || '#526D82',
                 status: 'todo',
                 createdAt: new Date().toISOString(),
                 history: [{ status: 'todo', timestamp: new Date().toISOString() }],
