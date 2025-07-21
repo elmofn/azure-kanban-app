@@ -325,6 +325,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- ESTADO DA APLICAÇÃO ---
             let tasks = []; // A lista de tarefas agora começa vazia
+            let isRendering = false;
             let taskToHighlightTemporarily = null;
             let selectedProject = 'all';
             let selectedResponsible = 'all';
@@ -335,6 +336,10 @@
 
             // --- FUNÇÃO PARA BUSCAR DADOS DA API ---
             async function fetchAndRenderTasks() {
+                // Se já estiver a renderizar, não faz nada para evitar sobreposições
+                if (isRendering) return; 
+                isRendering = true; // "Fecha" o semáforo
+
                 try {
                     const response = await fetch('/api/getTasks');
                     if (!response.ok) {
@@ -342,14 +347,21 @@
                     }
                     tasks = await response.json();
 
-                    // Esconde o loader e mostra o conteúdo principal
+                    // CORREÇÃO: Esconde o contentor do loader
                     loaderContainerEl.classList.add('hidden');
+
                     updateActiveView(); 
                     renderArchivedTasks();
 
+                    // Garante que os ícones são renderizados DEPOIS de o HTML ser atualizado
+                    lucide.createIcons(); 
+
                 } catch (error) {
                     console.error("Falha ao buscar tarefas:", error);
+                    // CORREÇÃO: Mostra uma mensagem de erro dentro do loader em caso de falha
                     loaderContainerEl.innerHTML = '<p class="text-red-500">Falha ao carregar as tarefas.</p>';
+                } finally {
+                    isRendering = false; // "Abre" o semáforo no final, quer tenha sucesso ou falhe
                 }
             }
 
@@ -360,23 +372,9 @@
 
             connection.on('tasksUpdated', () => {
                 console.log('Notificação recebida: atualizando tarefas.');
-                const persistentHighlightId = lastInteractedTaskId; // Guarda o ID do destaque persistente
-
-                fetchAndRenderTasks().then(() => {
-                    // Após a UI ser redesenhada...
-
-                    // Re-aplica o destaque persistente se necessário (apenas na vista de lista)
-                    if (persistentHighlightId && currentView === 'list') {
-                        lastInteractedTaskId = persistentHighlightId;
-                        highlightTask(persistentHighlightId, false);
-                    }
-
-                    // Aplica o destaque temporário se uma ação acabou de acontecer
-                    if (taskToHighlightTemporarily) {
-                        highlightTask(taskToHighlightTemporarily, true);
-                        taskToHighlightTemporarily = null; // Limpa a memória após o uso
-                    }
-                });
+                // A notificação apenas pede para a UI ser redesenhada.
+                // A lógica de destaque foi removida daqui para ser gerida pelas ações diretas.
+                fetchAndRenderTasks();
             });
 
                 // Tenta reconectar-se automaticamente em caso de perda de conexão
@@ -916,22 +914,14 @@
             confirmDeleteBtn.addEventListener('click', async () => {
                 if (taskIdToDelete) {
                     try {
-                        const response = await fetch(`/api/deleteTask/${taskIdToDelete}`, {
-                            method: 'DELETE'
-                        });
-
-                        if (!response.ok) {
-                            throw new Error('Falha ao excluir a tarefa.');
-                        }
+                        const response = await fetch(`/api/deleteTask/${taskIdToDelete}`, { method: 'DELETE' });
+                        if (!response.ok) throw new Error('Falha ao excluir a tarefa.');
 
                         showToast('Tarefa excluída com sucesso!');
 
                         taskIdToDelete = null;
                         deleteConfirmModalEl.classList.add('hidden');
-
-                        // Apenas chamo função central, que agora atualiza tudo :)
-                        await fetchAndRenderTasks(); 
-
+                        // Nenhuma chamada a fetchAndRenderTasks aqui. O SignalR trata disso.
                     } catch (error) {
                         console.error("Erro ao excluir tarefa:", error);
                         showToast('Falha ao excluir a tarefa.', 'error');
@@ -1027,7 +1017,6 @@
 
                 // Ação de Aprovar/Arquivar Tarefa
                 if (targetButton.classList.contains('approve-btn')) {
-                    taskToHighlightTemporarily = taskId; // Guarda o ID para o destaque
                     try {
                         await fetch(`/api/updateTask/${taskId}`, {
                             method: 'PUT',
@@ -1035,7 +1024,10 @@
                             body: JSON.stringify({ status: 'done' })
                         });
                         showToast('Tarefa arquivada!');
-                    } catch (error) { console.error("Erro ao arquivar tarefa:", error); }
+                    } catch (error) { 
+                        console.error("Erro ao arquivar tarefa:", error);
+                        showToast('Falha ao arquivar a tarefa.', 'error');
+                    }
                 } 
                 // Ação de Ver Informações
                 else if (targetButton.classList.contains('info-btn')) {
@@ -1049,7 +1041,6 @@
                 } 
                 // Ação de Restaurar Tarefa
                 else if (targetButton.classList.contains('restore-btn')) {
-                    taskToHighlightTemporarily = taskId; // <-- ADICIONE ESTA LINHA para guardar o ID para o destaque
                     try {
                         await fetch(`/api/updateTask/${taskId}`, {
                             method: 'PUT',
@@ -1058,7 +1049,10 @@
                         });
                         showToast('Tarefa restaurada com sucesso!');
                         archivedTasksModalEl.classList.add('hidden');
-                    } catch (error) { console.error("Erro ao restaurar tarefa:", error); }
+                    } catch (error) { 
+                        console.error("Erro ao restaurar tarefa:", error);
+                        showToast('Falha ao restaurar a tarefa.', 'error');
+                    }
                 }
             });
 
