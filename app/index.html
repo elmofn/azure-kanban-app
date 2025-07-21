@@ -231,11 +231,13 @@
                     <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
                     <input type="text" id="taskDescription" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
                 </div>
-                <div class="mb-4">
+                <div class="mb-4 relative"> <!-- 'relative' para posicionar a lista -->
                     <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável</label>
-                    <input type="text" id="taskResponsible" list="responsible-list" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required placeholder="Selecione ou digite um nome">
-                    <datalist id="responsible-list"></datalist>
+                    <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required placeholder="Selecione ou digite um nome" autocomplete="off">
+                    <!-- Novo contentor para as sugestões -->
+                    <div id="responsible-suggestions" class="absolute z-10 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                 </div>
+
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
                         <label for="taskProject" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Projeto</label>
@@ -422,15 +424,46 @@
             };
 
             const populateResponsibleInput = () => {
-                const responsibleList = document.getElementById('responsible-list');
-                // Extrai todos os nomes de responsáveis únicos e não vazios do array de tarefas
-                const responsibles = [...new Set(tasks.map(t => t.responsible).filter(Boolean))];
+                const input = document.getElementById('taskResponsible');
+                const suggestionsContainer = document.getElementById('responsible-suggestions');
+                const allResponsibles = [...new Set(tasks.flatMap(t => t.responsible).filter(Boolean))];
 
-                responsibleList.innerHTML = '';
-                responsibles.forEach(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    responsibleList.appendChild(option);
+                const showSuggestions = (filteredData) => {
+                    suggestionsContainer.innerHTML = '';
+                    if (filteredData.length === 0) {
+                        suggestionsContainer.classList.add('hidden');
+                        return;
+                    }
+
+                    filteredData.forEach(name => {
+                        const suggestionItem = document.createElement('div');
+                        suggestionItem.className = 'p-2 cursor-pointer hover:bg-custom-light dark:hover:bg-custom-dark';
+                        suggestionItem.textContent = name;
+                        suggestionItem.addEventListener('mousedown', (e) => {
+                            e.preventDefault(); // Impede que o 'blur' do input feche a lista antes de o clique ser registado
+                            input.value = name;
+                            suggestionsContainer.classList.add('hidden');
+                        });
+                        suggestionsContainer.appendChild(suggestionItem);
+                    });
+                    suggestionsContainer.classList.remove('hidden');
+                };
+
+                input.addEventListener('focus', () => {
+                    showSuggestions(allResponsibles);
+                });
+
+                input.addEventListener('input', () => {
+                    const query = input.value.toLowerCase();
+                    const filtered = allResponsibles.filter(name => name.toLowerCase().includes(query));
+                    showSuggestions(filtered);
+                });
+
+                // Fecha a lista se o usuário clicar fora
+                document.addEventListener('click', (e) => {
+                    if (!input.contains(e.target)) {
+                        suggestionsContainer.classList.add('hidden');
+                    }
                 });
             };
 
