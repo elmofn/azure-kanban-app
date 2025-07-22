@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quadro de Tarefas Colaborativo</title>
+    <title>Tarefas Tech TravelCash</title>
     <!-- Tailwind CSS para estilização -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Biblioteca de ícones Lucide -->
@@ -143,7 +143,7 @@
             <div class="container mx-auto flex justify-between items-center flex-wrap gap-4">
                 <!-- Grupo da Esquerda: Título e Filtro -->
                 <div class="flex items-center gap-6">
-                    <h1 class="text-xl font-bold text-custom-light">Quadro de Tarefas</h1>
+                    <img src="https://i.imgur.com/rS6Xx7X.png" alt="TravelCash" class="h-8 w-auto">
                     <!-- Seletor de Visualização -->
                     <div id="view-switcher" class="flex items-center bg-custom-dark p-1 rounded-lg">
                         <button data-view="list" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Lista</button>
@@ -657,13 +657,9 @@
                             <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico">
-                                        <i data-lucide="info" class="w-5 h-5 pointer-events-none"></i>
-                                    </button>
+                                    <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
                                     ${azureLinkIcon}
-                                    <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa">
-                                        <i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i>
-                                    </button>
+                                    <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -675,7 +671,13 @@
                         <table class="min-w-full">
                             <thead class="bg-custom-light dark:bg-custom-darkest/60">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Tarefa</th>
+                                    <!-- MUDANÇA AQUI: O cabeçalho da tarefa agora inclui o contador -->
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">
+                                        <div class="flex items-center gap-2">
+                                            <span>Tarefa</span>
+                                            <span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${activeTasks.length}</span>
+                                        </div>
+                                    </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Projeto</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Estado</th>
