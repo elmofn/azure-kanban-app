@@ -342,6 +342,8 @@
             let taskToHighlightTemporarily = null;
             let selectedProject = 'all';
             let selectedResponsible = 'all';
+            let sortColumn = 'createdAt';
+            let sortDirection = 'desc';
             let currentView = 'list';
             let lastInteractedTaskId = null;
             let taskIdToDelete = null;
@@ -523,6 +525,11 @@
                 const date = new Date(dateString);
                 return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             };
+            const getSortIndicator = (columnName) => {
+                if (sortColumn !== columnName) return '';
+                const icon = sortDirection === 'asc' ? 'arrow-up' : 'arrow-down';
+                return `<i data-lucide="${icon}" class="w-4 h-4 ml-1"></i>`;
+            };
 
             const createTaskElement = (task) => {
                 // O cartão principal é um contentor flexível com overflow escondido
@@ -639,6 +646,24 @@
                     activeTasks = activeTasks.filter(t => t.project === selectedProject);
                 }
 
+                // --- LÓGICA DE ORDENAÇÃO CORRIGIDA ---
+                activeTasks.sort((a, b) => {
+                    const valA = (sortColumn === 'responsible' ? a.responsible?.[0] : a[sortColumn]) || '';
+                    const valB = (sortColumn === 'responsible' ? b.responsible?.[0] : b[sortColumn]) || '';
+
+                    if (sortColumn === 'createdAt') {
+                        return sortDirection === 'asc' 
+                            ? new Date(valA) - new Date(valB) 
+                            : new Date(valB) - new Date(valA);
+                    }
+
+                    // Converte para minúsculas e remove espaços extra para uma ordenação correta e insensível a maiúsculas/minúsculas
+                    return sortDirection === 'asc' 
+                        ? String(valA).trim().toLowerCase().localeCompare(String(valB).trim().toLowerCase()) 
+                        : String(valB).trim().toLowerCase().localeCompare(String(valA).trim().toLowerCase());
+                });
+                // --- FIM DA LÓGICA DE ORDENAÇÃO ---
+
                 const tableBody = activeTasks.map(task => {
                     let azureLinkIcon = task.azureLink 
                         ? `<a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i></a>`
@@ -649,12 +674,11 @@
                         projectTag = `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>`;
                     }
 
-                    // NOVO: Cria uma versão abreviada do ID
                     const shortId = task.id ? task.id.substring(0, 8) : 'N/A';
 
                     return `
                         <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
-                            <td class="px-6 py-4 font-mono text-xs text-white-500" title="${task.id}">${shortId}</td>
+                            <td class="px-6 py-4 font-mono text-xs text-gray-500" title="${task.id}">${shortId}</td>
                             <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
                             <td class="px-6 py-4 whitespace-nowrap">${projectTag}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${task.responsible}</td>
@@ -676,18 +700,28 @@
                         <table class="min-w-full">
                             <thead class="bg-custom-light dark:bg-custom-darkest/60">
                                 <tr>
-                                    <!-- MUDANÇAS AQUI: Adicionado o cabeçalho "ID" e ajustado o contador -->
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="id">
+                                        <div class="flex items-center">ID ${getSortIndicator('id')}</div>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="description">
                                         <div class="flex items-center gap-2">
                                             <span>Tarefa</span>
                                             <span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${activeTasks.length}</span>
+                                            ${getSortIndicator('description')}
                                         </div>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Projeto</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Estado</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Criação</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="project">
+                                        <div class="flex items-center">Projeto ${getSortIndicator('project')}</div>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="responsible">
+                                        <div class="flex items-center">Responsável ${getSortIndicator('responsible')}</div>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="status">
+                                        <div class="flex items-center">Estado ${getSortIndicator('status')}</div>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="createdAt">
+                                        <div class="flex items-center">Criação ${getSortIndicator('createdAt')}</div>
+                                    </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
                                 </tr>
                             </thead>
@@ -733,6 +767,26 @@
                     }, 0);
                 }
             };
+
+            listViewEl.addEventListener('click', (e) => {
+                const header = e.target.closest('.sortable-header');
+                if (!header) return;
+
+                const sortBy = header.dataset.sortBy;
+
+                // Se já estamos a ordenar por esta coluna, inverte a direção
+                if (sortColumn === sortBy) {
+                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                } 
+                // Se for uma nova coluna, começa com a ordem ascendente
+                else {
+                    sortColumn = sortBy;
+                    sortDirection = 'asc';
+                }
+
+                // Redesenha a vista em lista com a nova ordenação
+                renderListView();
+            });
 
             const populateProjectFilter = () => {
                 const projects = [...new Set(tasks.map(t => t.project).filter(Boolean))]; // Filtra valores vazios
