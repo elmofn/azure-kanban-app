@@ -42,7 +42,7 @@ app.http('createTask', {
                 status: 'todo',
                 createdAt: new Date().toISOString(),
                 history: [{ status: 'todo', timestamp: new Date().toISOString() }],
-                order: Date.now()
+                order: -Date.now()
             };
             await database.containers.createIfNotExists({ id: "Tasks", partitionKey: { paths: ["/id"] } });
             await container.items.create(newTask);
