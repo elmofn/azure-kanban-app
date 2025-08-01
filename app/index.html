@@ -127,6 +127,33 @@
             background-color: #450A0A !important; /* Tailwind's red-950 */
             border-color: #DC2626 !important; /* Tailwind's red-600 */
         }
+
+        .responsible-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #526D82; /* custom-dark */
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .tag-remove-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            background-color: rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .tag-remove-btn:hover {
+            background-color: rgba(0,0,0,0.4);
+        }
+
             </style>
     <script>
         tailwind.config = { 
@@ -251,9 +278,12 @@
                         <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
                         <textarea id="taskDescription" rows="3" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required></textarea>
                     </div>
-                    <div class="relative">
+                    <div class="mb-4">
                         <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável(eis)</label>
-                        <input type="text" id="taskResponsible" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required placeholder="Digite os nomes separados por vírgula" autocomplete="off">
+                        <div id="responsible-input-container" class="relative flex items-center flex-wrap gap-2 p-2 shadow-sm border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full min-h-[46px]">
+                            <!-- As tags dos responsáveis serão inseridas aqui pelo JavaScript -->
+                            <input type="text" id="taskResponsible" class="flex-grow bg-transparent focus:outline-none text-custom-darkest dark:text-custom-light" placeholder="Adicionar responsável..." autocomplete="off">
+                        </div>
                         <div id="responsible-suggestions" class="absolute z-20 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -341,7 +371,7 @@
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-2">Adicionar Comentário</h3>
                         <textarea id="comment-input" class="w-full shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg py-2 px-3 text-custom-darkest dark:text-custom-light" placeholder="Escreva um comentário..." rows="2"></textarea>
                         <div class="flex justify-end mt-2">
-                            <button id="add-comment-btn" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                            <button id="add-comment-btn" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold p-2 rounded-lg transition-colors flex items-center gap-2">
                                 <i data-lucide="send" class="w-5 h-5"></i>
                                 <span>Enviar</span>
                             </button>
@@ -486,10 +516,59 @@
             }
 
             // NOVA FUNÇÃO PARA SUGESTÕES DE RESPONSÁVEIS (COM MULTI-SELEÇÃO)
-            const setupResponsibleSuggestions = () => {
+            const setupTagInput = (initialResponsibles = []) => {
+                const container = document.getElementById('responsible-input-container');
                 const input = document.getElementById('taskResponsible');
                 const suggestionsContainer = document.getElementById('responsible-suggestions');
                 const allResponsibles = [...new Set(tasks.flatMap(t => t.responsible).filter(Boolean))];
+                let currentResponsibles = [...initialResponsibles];
+
+                const renderTags = () => {
+                    // Remove as tags antigas para evitar duplicação
+                    container.querySelectorAll('.responsible-tag').forEach(tag => tag.remove());
+                    // Adiciona as tags atualizadas
+                    currentResponsibles.forEach(name => {
+                        const tag = document.createElement('div');
+                        tag.className = 'responsible-tag';
+
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = name;
+                        tag.appendChild(nameSpan);
+
+                        const removeBtn = document.createElement('span');
+                        removeBtn.className = 'tag-remove-btn';
+                        removeBtn.innerHTML = `<i data-lucide="x" class="w-3 h-3 pointer-events-none"></i>`;
+                        removeBtn.onclick = () => {
+                            currentResponsibles = currentResponsibles.filter(r => r !== name);
+                            renderTags();
+                        };
+
+                        tag.appendChild(removeBtn);
+                        container.insertBefore(tag, input);
+                    });
+                    lucide.createIcons();
+                };
+
+                const addResponsible = (name) => {
+                    const trimmedName = name.trim();
+                    if (trimmedName && !currentResponsibles.includes(trimmedName)) {
+                        currentResponsibles.push(trimmedName);
+                        renderTags();
+                    }
+                    input.value = '';
+                    suggestionsContainer.classList.add('hidden');
+                };
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === ',' || e.key === 'Enter') {
+                        e.preventDefault();
+                        addResponsible(input.value);
+                    }
+                    if (e.key === 'Backspace' && input.value === '' && currentResponsibles.length > 0) {
+                        currentResponsibles.pop();
+                        renderTags();
+                    }
+                });
 
                 const showSuggestions = (filteredData) => {
                     suggestionsContainer.innerHTML = '';
@@ -497,18 +576,13 @@
                         suggestionsContainer.classList.add('hidden');
                         return;
                     }
-
                     filteredData.forEach(name => {
                         const suggestionItem = document.createElement('div');
                         suggestionItem.className = 'p-2 cursor-pointer hover:bg-custom-light dark:hover:bg-custom-dark';
                         suggestionItem.textContent = name;
                         suggestionItem.addEventListener('mousedown', (e) => {
                             e.preventDefault();
-                            const currentValues = input.value.split(',').map(v => v.trim());
-                            currentValues.pop(); // Remove o valor que está a ser digitado
-                            currentValues.push(name); // Adiciona o nome selecionado
-                            input.value = currentValues.join(', ') + ', '; // Adiciona vírgula para o próximo
-                            suggestionsContainer.classList.add('hidden');
+                            addResponsible(name);
                             input.focus();
                         });
                         suggestionsContainer.appendChild(suggestionItem);
@@ -517,18 +591,20 @@
                 };
 
                 const updateSuggestions = () => {
-                    const valueParts = input.value.split(',');
-                    const currentQuery = valueParts[valueParts.length - 1].trim().toLowerCase();
-                    if (currentQuery === '') {
-                        showSuggestions(allResponsibles);
+                    const query = input.value.trim().toLowerCase();
+                    const availableSuggestions = allResponsibles.filter(name => !currentResponsibles.includes(name));
+                    if (query === '') {
+                        showSuggestions(availableSuggestions);
                     } else {
-                        const filtered = allResponsibles.filter(name => name.toLowerCase().includes(currentQuery));
+                        const filtered = availableSuggestions.filter(name => name.toLowerCase().includes(query));
                         showSuggestions(filtered);
                     }
                 };
 
                 input.addEventListener('focus', updateSuggestions);
                 input.addEventListener('input', updateSuggestions);
+
+                renderTags(); // Renderiza as tags iniciais
             };
 
             // NOVA FUNÇÃO PARA SUGESTÕES DE PROJETOS
@@ -1143,21 +1219,17 @@
 
                 editingTaskId = taskId;
 
-                // O formato 'yyyy-mm-dd' é o que o input type="date" espera.
-                document.getElementById('taskDueDate').value = taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : '';
                 document.getElementById('modalTitle').textContent = 'Editar Tarefa';
-                document.getElementById('taskTitle').value = taskToEdit.title
+                document.getElementById('taskTitle').value = taskToEdit.title || '';
                 document.getElementById('taskDescription').value = taskToEdit.description;
-                // Converte o array de volta para uma string para o input
-                document.getElementById('taskResponsible').value = Array.isArray(taskToEdit.responsible) ? taskToEdit.responsible.join(', ') : taskToEdit.responsible;
                 document.getElementById('taskAzureLink').value = taskToEdit.azureLink || '';
                 document.getElementById('taskProject').value = taskToEdit.project || '';
                 document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';
                 document.getElementById('color-picker-button').style.backgroundColor = taskToEdit.projectColor || '#526D82';
+                document.getElementById('taskDueDate').value = taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : '';
 
-                setupResponsibleSuggestions();
+                setupTagInput(taskToEdit.responsible || []);
                 setupProjectSuggestions();
-
                 taskHistoryModal.classList.add('hidden');
                 taskModal.classList.remove('hidden');
             };
@@ -1166,14 +1238,22 @@
                 editingTaskId = null;
                 document.getElementById('modalTitle').textContent = 'Nova Tarefa';
                 document.getElementById('taskForm').reset();
-                setupResponsibleSuggestions();
-                setupProjectSuggestions();
+                document.getElementById('taskProjectColor').value = '#526D82';
                 document.getElementById('color-picker-button').style.backgroundColor = '#526D82';
+                setupTagInput([]);
+                setupProjectSuggestions();
                 taskModal.classList.remove('hidden');
             });
             
             cancelBtn.addEventListener('click', () => {
                 taskModal.classList.add('hidden');
+                // Se estávamos a editar uma tarefa, volta para o ecrã de informações
+                if (editingTaskId) {
+                    renderTaskHistory(editingTaskId);
+                    // Garante que o destaque persistente na lista seja mantido
+                    lastInteractedTaskId = editingTaskId; 
+                    highlightTask(editingTaskId, false);
+                }
             });
             
             closeHistoryBtn.addEventListener('click', () => {
@@ -1249,10 +1329,13 @@
                     projectName = '#' + projectName;
                 }
 
+                const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
+                const responsibleNames = responsibleTags.map(tag => tag.firstChild.textContent);
+
                 const taskPayload = {
                     title: document.getElementById('taskTitle').value,
                     description: document.getElementById('taskDescription').value,
-                    responsible: document.getElementById('taskResponsible').value,
+                    responsible: responsibleNames.join(','),
                     azureLink: document.getElementById('taskAzureLink').value,
                     project: projectName,
                     projectColor: document.getElementById('taskProjectColor').value,
@@ -1261,36 +1344,29 @@
 
                 try {
                     let response;
-                    let successMessage = ''; // Variável para a mensagem de sucesso
-
                     if (editingTaskId) {
                         response = await fetch(`/api/updateTask/${editingTaskId}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload)
                         });
-                        successMessage = 'Tarefa atualizada com sucesso!';
                     } else {
                         response = await fetch('/api/createTask', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(taskPayload),
                         });
-                        successMessage = 'Tarefa criada com sucesso!';
                     }
                     if (!response.ok) throw new Error('Falha ao salvar a tarefa.');
 
                     const savedTask = await response.json();
                     taskToHighlightTemporarily = savedTask.id;
-                    
-                    showToast(successMessage);
 
                     taskModal.classList.add('hidden');
                     e.target.reset();
                     editingTaskId = null;
                 } catch (error) {
                     console.error("Erro ao salvar tarefa:", error);
-                    showToast('Falha ao salvar a tarefa.', 'error'); 
                 }
             });
 
@@ -1513,12 +1589,15 @@
                 const responsibleInput = document.getElementById('taskResponsible');
                 const projectInput = document.getElementById('taskProject');
                 const colorButton = document.getElementById('color-picker-button');
+                const responsibleSuggestions = document.getElementById('responsible-suggestions');
+                const projectSuggestions = document.getElementById('project-suggestions');
 
-                if (!responsibleInput.contains(e.target)) {
-                    document.getElementById('responsible-suggestions').classList.add('hidden');
+                // Esconde as sugestões apenas se o clique for fora do input E fora do contentor de sugestões
+                if (!responsibleInput.contains(e.target) && !responsibleSuggestions.contains(e.target)) {
+                    responsibleSuggestions.classList.add('hidden');
                 }
-                if (!projectInput.contains(e.target)) {
-                    document.getElementById('project-suggestions').classList.add('hidden');
+                if (!projectInput.contains(e.target) && !projectSuggestions.contains(e.target)) {
+                    projectSuggestions.classList.add('hidden');
                 }
                 if (!colorButton.contains(e.target)) {
                     document.getElementById('color-palette').classList.add('hidden');
