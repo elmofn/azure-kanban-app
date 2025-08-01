@@ -296,7 +296,12 @@
                 </div>
             </div>
             <div class="mb-4 p-4 bg-white dark:bg-custom-dark/50 rounded-lg space-y-3">
+                <!-- NOVO: Bloco do Título -->
                 <div>
+                    <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium">Título</h3>
+                    <p id="task-history-title" class="text-custom-darkest dark:text-custom-light font-semibold"></p>
+                </div>
+                <div class="border-t border-custom-medium/30 dark:border-custom-dark/50 pt-3">
                     <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium">Descrição</h3>
                     <p id="task-history-description" class="text-custom-darkest dark:text-custom-light"></p>
                 </div>
@@ -898,8 +903,10 @@
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) return;
 
+                // Adiciona o título ao modal
+                document.getElementById('task-history-title').textContent = task.title || '';
                 document.getElementById('task-history-description').textContent = task.description;
-                document.getElementById('task-history-responsible').textContent = task.responsible;
+                document.getElementById('task-history-responsible').textContent = Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible;
 
                 const linkContainer = document.getElementById('task-history-azure-link-container');
                 const linkEl = document.getElementById('task-history-azure-link');
@@ -920,7 +927,7 @@
                             <span class="font-semibold text-custom-darkest dark:text-custom-light">${statusLabels[entry.status] || entry.status}</span>
                         </div>
                     `).join('');
-                
+
                 document.getElementById('taskHistoryModal').classList.remove('hidden');
                 lucide.createIcons();
             };
