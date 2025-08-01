@@ -149,6 +149,7 @@
                     <div id="view-switcher" class="flex items-center bg-custom-dark p-1 rounded-lg">
                         <button data-view="list" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Lista</button>
                         <button data-view="kanban" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Kanban</button>
+                        <button data-view="archived" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Arquivados</button>
                     </div>
                     <div class="flex items-center gap-2">
                         <label for="responsibleFilter" class="text-custom-medium" title="Filtrar por responsável">
@@ -173,9 +174,6 @@
                     <button id="addTaskBtn" class="bg-custom-light hover:bg-custom-medium text-custom-darkest font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                         <span>Nova Tarefa</span>
-                    </button>
-                    <button id="showArchivedBtn" class="bg-custom-dark hover:bg-custom-medium/20 text-white p-2 rounded-lg flex items-center gap-2 transition-colors" title="Ver tarefas arquivadas">
-                        <i data-lucide="archive" class="w-5 h-5"></i>
                     </button>
                     <button id="theme-toggle" class="p-2 rounded-lg text-custom-medium hover:bg-custom-dark/50 transition-colors">
                         <i id="theme-icon-light" data-lucide="sun" class="w-5 h-5 hidden"></i>
@@ -216,9 +214,15 @@
                     </div>
                 </div>
             </div>
+
             <!-- Visualização em Lista -->
             <div id="listView" class="hidden">
                 <!-- O conteúdo da lista será gerado aqui -->
+            </div>
+
+            <!-- Vista de Tarefas Arquivadas -->
+            <div id="archivedView" class="hidden">
+                <!-- O conteúdo da lista de arquivados será gerado aqui -->
             </div>
         </main>
     </div>
@@ -269,19 +273,6 @@
                     <button type="submit" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold py-2 px-4 rounded-lg transition-colors">Salvar</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- Modal para Tarefas Arquivadas -->
-    <div id="archivedTasksModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden overflow-y-auto py-10">
-        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-2xl mx-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-custom-darkest dark:text-custom-light">Tarefas Arquivadas (Pronto)</h2>
-                <button id="closeArchivedBtn" class="p-2 rounded-full text-custom-darkest dark:text-custom-light hover:bg-custom-medium/50 dark:hover:bg-custom-dark/50">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            <div id="archived-tasks-list" class="space-y-2"></div>
         </div>
     </div>
 
@@ -505,10 +496,10 @@
             const responsibleFilterEl = document.getElementById('responsibleFilter');
             const kanbanViewEl = document.getElementById('kanbanView');
             const listViewEl = document.getElementById('listView');
+            const archivedViewEl = document.getElementById('archivedView');
             const viewSwitcherEl = document.getElementById('view-switcher');
             const loaderContainerEl = document.getElementById('loader-container');
             const projectFilterEl = document.getElementById('projectFilter');
-            const archivedTasksModalEl = document.getElementById('archivedTasksModal');
             const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
             const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
             const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
@@ -678,7 +669,7 @@
 
                     return `
                         <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
-                            <td class="px-6 py-4 font-mono text-xs text-gray-500" title="${task.id}">${shortId}</td>
+                            <td class="px-6 py-4 font-mono text-xs text-white-500" title="${task.id}">${shortId}</td>
                             <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
                             <td class="px-6 py-4 whitespace-nowrap">${projectTag}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${task.responsible}</td>
@@ -741,26 +732,28 @@
                 populateResponsibleFilter();
                 populateProjectFilter();
                 
+                // Este bloco atualiza a aparência dos botões de vista (Lista/Kanban/Arquivados)
                 viewSwitcherEl.querySelectorAll('.view-btn').forEach(btn => {
-                    if (btn.dataset.view === currentView) {
-                        btn.classList.add('bg-custom-light', 'text-custom-darkest');
-                        btn.classList.remove('text-custom-light');
-                    } else {
-                        btn.classList.remove('bg-custom-light', 'text-custom-darkest');
-                        btn.classList.add('text-custom-light');
-                    }
+                    btn.classList.toggle('bg-custom-light', btn.dataset.view === currentView);
+                    btn.classList.toggle('text-custom-darkest', btn.dataset.view === currentView);
+                    btn.classList.toggle('text-custom-light', btn.dataset.view !== currentView);
                 });
 
+                // Este bloco controla qual das três vistas (Kanban, Lista, ou Arquivados) é exibida
+                kanbanViewEl.classList.toggle('hidden', currentView !== 'kanban');
+                listViewEl.classList.toggle('hidden', currentView !== 'list');
+                archivedViewEl.classList.toggle('hidden', currentView !== 'archived'); // <-- NOVO
+
+                // Este bloco decide qual função de renderização chamar com base na vista ativa
                 if (currentView === 'kanban') {
-                    kanbanViewEl.classList.remove('hidden');
-                    listViewEl.classList.add('hidden');
                     renderKanbanView();
-                } else {
-                    kanbanViewEl.classList.add('hidden');
-                    listViewEl.classList.remove('hidden');
+                } else if (currentView === 'list') {
                     renderListView();
+                } else if (currentView === 'archived') {
+                    renderArchivedTasks(); // <-- NOVO
                 }
 
+                // Esta parte, que você já tinha, continua a ser importante para o destaque visual
                 if (lastInteractedTaskId) {
                     setTimeout(() => {
                         highlightTask(lastInteractedTaskId, currentView === 'kanban');
@@ -847,35 +840,51 @@
             };
                         
             const renderArchivedTasks = () => {
-                const listEl = document.getElementById('archived-tasks-list');
-                listEl.innerHTML = '';
                 const archivedTasks = tasks.filter(t => t.status === 'done');
 
-                if (archivedTasks.length === 0) {
-                    listEl.innerHTML = '<p class="text-custom-dark dark:text-custom-medium text-center">Nenhuma tarefa arquivada.</p>';
-                    return;
-                }
-
-                archivedTasks.forEach(task => {
-                    const taskEl = document.createElement('div');
-                    taskEl.className = 'flex justify-between items-center p-3 bg-white dark:bg-custom-dark/50 rounded-lg mb-2 shadow-sm';
-                    taskEl.innerHTML = `
-                        <div>
-                           <p class="text-custom-darkest dark:text-custom-light">${task.description}</p>
-                           <p class="text-xs text-custom-dark dark:text-custom-medium mt-1">Responsável: ${task.responsible} &bull; Criado em: ${formatDate(task.createdAt)}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button class="restore-btn bg-custom-medium/50 dark:bg-custom-dark hover:bg-custom-medium dark:hover:bg-custom-medium/50 p-2 rounded-md" data-task-id="${task.id}" title="Restaurar Tarefa">
-                                <i data-lucide="undo-2" class="w-4 h-4 pointer-events-none"></i>
-                            </button>
-                            <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-2 rounded-md" data-task-id="${task.id}" title="Excluir tarefa permanentemente">
-                                <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
-                            </button>
-                        </div>
+                const tableBody = archivedTasks.map(task => {
+                    return `
+                        <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
+                            <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
+                            <td class="px-6 py-4 whitespace-nowrap">${task.project || ''}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <button class="restore-btn text-blue-400 hover:text-blue-600 p-1" data-task-id="${task.id}" title="Restaurar Tarefa"><i data-lucide="undo-2" class="w-5 h-5 pointer-events-none"></i></button>
+                                    <button class="delete-btn text-red-400 hover:text-red-600 p-1" data-task-id="${task.id}" title="Excluir Tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
+                                </div>
+                            </td>
+                        </tr>
                     `;
-                    listEl.appendChild(taskEl);
-                });
-                
+                }).join('');
+
+                const tableHtml = `
+                    <div class="bg-white dark:bg-custom-darkest/40 rounded-lg shadow overflow-hidden">
+                        <table class="min-w-full">
+                            <thead class="bg-custom-light dark:bg-custom-darkest/60">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">
+                                        <div class="flex items-center gap-2">
+                                            <span>Tarefa Concluída</span>
+                                            <span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${archivedTasks.length}</span>
+                                        </div>
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Projeto</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Criação</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-custom-light dark:divide-custom-dark">
+                                ${tableBody}
+                                ${archivedTasks.length === 0 ? '<tr><td colspan="5" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa arquivada.</td></tr>' : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                archivedViewEl.innerHTML = tableHtml;
                 lucide.createIcons();
             };
 
@@ -1018,14 +1027,6 @@
             
             cancelBtn.addEventListener('click', () => {
                 taskModal.classList.add('hidden');
-            });
-            
-            showArchivedBtn.addEventListener('click', () => {
-                renderArchivedTasks();
-                archivedTasksModal.classList.remove('hidden');
-            });
-            closeArchivedBtn.addEventListener('click', () => {
-                archivedTasksModal.classList.add('hidden');
             });
             
             closeHistoryBtn.addEventListener('click', () => {
