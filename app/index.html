@@ -119,7 +119,15 @@
             66% { transform: rotate(-2deg); }
             100% { transform: rotate(0deg); }
         }
-    </style>
+        .task-overdue {
+            background-color: #FECACA !important; /* Tailwind's red-200 */
+            border-color: #F87171 !important; /* Tailwind's red-400 */
+        }
+        .dark .task-overdue {
+            background-color: #450A0A !important; /* Tailwind's red-950 */
+            border-color: #DC2626 !important; /* Tailwind's red-600 */
+        }
+            </style>
     <script>
         tailwind.config = { 
             darkMode: 'class',
@@ -269,6 +277,11 @@
                         </div>
                     </div>
                 </div>
+                <!-- Campo de Data Prevista -->
+                <div class="mb-4">
+                    <label for="taskDueDate" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Data Prevista (Opcional)</label>
+                    <input type="date" id="taskDueDate" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
+                </div>
                 <div class="mb-4">
                     <label for="taskAzureLink" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Link Azure DevOps (Opcional)</label>
                     <input type="url" id="taskAzureLink" placeholder="https://dev.azure.com/..." class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
@@ -334,6 +347,27 @@
         </div>
     </div>
 
+    <!-- NOVO: Modal para Definir Data Prevista -->
+    <div id="dueDateModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-sm mx-4">
+            <h2 class="text-2xl font-bold text-custom-darkest dark:text-custom-light mb-4 flex items-center gap-2">
+                <i data-lucide="calendar-plus" class="w-6 h-6"></i>
+                Definir Data Prevista
+            </h2>
+            <p class="text-custom-darkest dark:text-custom-light mb-6">Esta tarefa precisa de uma data de previsão para avançar. Por favor, defina um prazo.</p>
+            <form id="dueDateForm">
+                <div class="mb-4">
+                    <label for="modalDueDate" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Data Prevista</label>
+                    <input type="date" id="modalDueDate" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
+                </div>
+                <div class="flex items-center justify-end gap-4 mt-8">
+                    <button type="button" id="cancelDueDateBtn" class="bg-custom-medium hover:bg-custom-dark text-custom-darkest hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
+                    <button type="submit" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold py-2 px-4 rounded-lg transition-colors">Salvar Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -349,6 +383,7 @@
             let lastInteractedTaskId = null;
             let taskIdToDelete = null;
             let editingTaskId = null;
+            let taskBeingMoved = null;
 
             // --- FUNÇÃO PARA BUSCAR DADOS DA API ---
             async function fetchAndRenderTasks() {
@@ -513,6 +548,9 @@
             const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
             const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
             const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+            const dueDateModalEl = document.getElementById('dueDateModal');
+            const dueDateForm = document.getElementById('dueDateForm');
+            const cancelDueDateBtn = document.getElementById('cancelDueDateBtn');
             const statusLabels = { todo: 'A fazer', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
 
             // --- FUNÇÕES DE RENDERIZAÇÃO ---
@@ -533,13 +571,13 @@
             };
 
             const createTaskElement = (task) => {
-                // O cartão principal é um contentor flexível com overflow escondido
-                // para que os cantos do rodapé fiquem perfeitamente arredondados.
                 const taskCard = document.createElement('div');
-                taskCard.className = 'task-card bg-white dark:bg-custom-darkest rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab flex flex-col overflow-hidden';
+
+                // LÓGICA DE TAREFA ATRASADA
+                const overdueClass = isTaskOverdue(task) ? ' task-overdue' : '';
+                taskCard.className = `task-card bg-white dark:bg-custom-darkest rounded-lg border border-custom-medium/50 dark:border-custom-dark cursor-grab flex flex-col overflow-hidden${overdueClass}`;
                 taskCard.dataset.taskId = task.id;
 
-                // O conteúdo principal da tarefa é colocado num div separado para ter o seu próprio padding.
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'p-4 relative';
 
@@ -553,7 +591,6 @@
                     azureLinkIcon = `<a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-4 h-4 pointer-events-none"></i></a>`;
                 }
 
-                // Lógica para exibir os múltiplos responsáveis
                 let responsibleDisplay = '';
                 if (Array.isArray(task.responsible) && task.responsible.length > 0) {
                     const primaryResponsible = task.responsible[0];
@@ -563,12 +600,21 @@
                         responsibleDisplay += `<span class="ml-1 text-xs font-bold bg-custom-medium text-custom-darkest rounded-full px-1.5 py-0.5" title="${task.responsible.slice(1).join(', ')}">+${otherResponsiblesCount}</span>`;
                     }
                 } else {
-                    // Fallback para tarefas antigas que possam ter o responsável como uma string
                     responsibleDisplay = `<strong class="text-xs font-medium text-custom-dark dark:text-custom-medium">${task.responsible || 'N/D'}</strong>`;
                 }
 
+                let dueDateDisplay = '';
+                if (task.dueDate) {
+                    dueDateDisplay = `
+                        <div class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                            <span>${formatDate(task.dueDate)}</span>
+                        </div>
+                    `;
+                }
+
                 contentDiv.innerHTML = `
-                    <p class="font-bold text-custom-darkest dark:text-custom-light pr-8">${task.title}</p>
+                    <p class="font-bold text-custom-darkest dark:text-custom-light pr-8">${task.title || ''}</p>
                     <p class="text-sm text-custom-dark dark:text-custom-medium pr-8 description-truncate mt-1" title="${task.description}">${task.description}</p>
                     ${approveButton}
                     <div class="mt-3 pt-2 border-t border-custom-medium/50 dark:border-custom-dark flex justify-between items-center">
@@ -578,15 +624,14 @@
                             <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
                         </div>
                         <div class="flex items-center gap-2">
+                            ${dueDateDisplay}
                             ${responsibleDisplay}
                         </div>
                     </div>
                 `;
 
-                // Adicionamos o conteúdo principal ao cartão.
                 taskCard.appendChild(contentDiv);
 
-                // Se a tarefa tiver um projeto, criamos e adicionamos a barra de rodapé.
                 if (task.project) {
                     const projectBar = document.createElement('div');
                     projectBar.className = 'text-xs text-white px-4 py-0.5 mt-auto';
@@ -1012,6 +1057,8 @@
 
                 editingTaskId = taskId;
 
+                // O formato 'yyyy-mm-dd' é o que o input type="date" espera.
+                document.getElementById('taskDueDate').value = taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : '';
                 document.getElementById('modalTitle').textContent = 'Editar Tarefa';
                 document.getElementById('taskTitle').value = taskToEdit.title
                 document.getElementById('taskDescription').value = taskToEdit.description;
@@ -1071,7 +1118,8 @@
                     responsible: document.getElementById('taskResponsible').value,
                     azureLink: document.getElementById('taskAzureLink').value,
                     project: projectName,
-                    projectColor: document.getElementById('taskProjectColor').value
+                    projectColor: document.getElementById('taskProjectColor').value,
+                    dueDate: document.getElementById('taskDueDate').value
                 };
 
                 try {
@@ -1109,10 +1157,27 @@
                 }
             });
 
+            const isTaskOverdue = (task) => {
+                if (!task.dueDate || !['inprogress', 'stopped', 'homologation'].includes(task.status)) {
+                    return false;
+                }
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas as datas
+                const dueDate = new Date(task.dueDate);
+                return dueDate < today;
+            };
+
             // --- LÓGICA DE EXCLUSÃO ---
             const openDeleteModal = (taskId) => {
                 taskIdToDelete = taskId;
                 deleteConfirmModalEl.classList.remove('hidden');
+                lucide.createIcons();
+            };
+
+            const openDueDateModal = (task, newStatus) => {
+                taskBeingMoved = { task, newStatus };
+                dueDateModalEl.classList.remove('hidden');
+                document.getElementById('modalDueDate').focus();
                 lucide.createIcons();
             };
 
@@ -1137,6 +1202,35 @@
             cancelDeleteBtn.addEventListener('click', () => {
                 taskIdToDelete = null;
                 deleteConfirmModalEl.classList.add('hidden');
+            });
+
+            dueDateForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!taskBeingMoved) return;
+
+                const newDueDate = document.getElementById('modalDueDate').value;
+                const { task, newStatus } = taskBeingMoved;
+
+                taskToHighlightTemporarily = task.id;
+                try {
+                    await fetch(`/api/updateTask/${task.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus, dueDate: newDueDate })
+                    });
+                    showToast('Tarefa movida e data definida!');
+                    dueDateModalEl.classList.add('hidden');
+                    taskBeingMoved = null;
+                } catch (error) {
+                    console.error("Erro ao definir data e mover tarefa:", error);
+                    showToast('Falha ao salvar a data.', 'error');
+                }
+            });
+
+            cancelDueDateBtn.addEventListener('click', () => {
+                dueDateModalEl.classList.add('hidden');
+                taskBeingMoved = null;
+                fetchAndRenderTasks(); // Recarrega para reverter qualquer movimento visual
             });
 
 
@@ -1173,16 +1267,25 @@
                         ghostClass: 'sortable-ghost',
                         dragClass: 'sortable-drag',
                         dragoverClass: 'drop-target-highlight',
-                        forceFallback: true,   // Força o uso do clone para permitir a animação
-                        fallbackOnBody: true,  // Garante que o clone siga o rato por todo o ecrã
+                        forceFallback: true,
+                        fallbackOnBody: true,
                         onEnd: async function (evt) {
                             const taskId = evt.item.dataset.taskId;
-                            taskToHighlightTemporarily = taskId; // Guarda o ID para o destaque temporário
-
                             const newStatus = evt.to.dataset.columnId;
                             const task = tasks.find(t => t.id === taskId);
 
-                            // Se a tarefa mudou de coluna, atualiza o status
+                            const activeColumns = ['stopped', 'inprogress', 'homologation'];
+
+                            // VERIFICAÇÃO: Se a tarefa está a entrar numa coluna ativa e não tem data
+                            if (activeColumns.includes(newStatus) && !task.dueDate) {
+                                // Cancela o movimento visual e abre o modal
+                                evt.from.appendChild(evt.item); 
+                                openDueDateModal(task, newStatus);
+                                return; // Para a execução aqui
+                            }
+
+                            taskToHighlightTemporarily = taskId;
+
                             if (task && task.status !== newStatus) {
                                 try {
                                     await fetch(`/api/updateTask/${taskId}`, {
@@ -1191,9 +1294,7 @@
                                         body: JSON.stringify({ status: newStatus })
                                     });
                                 } catch (error) { console.error("Erro ao mover tarefa:", error); }
-                            } 
-                            // Se não, atualiza a ordem
-                            else {
+                            } else {
                                 try {
                                     const allTaskElements = Array.from(document.querySelectorAll('.task-card'));
                                     const orderedTasksPayload = allTaskElements.map((el, index) => ({

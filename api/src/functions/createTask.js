@@ -32,6 +32,7 @@ app.http('createTask', {
 
             const newTask = {
                 id: uuidv4(),
+                dueDate: taskData.dueDate || null,
                 title: taskData.title,
                 description: taskData.description,
                 responsible: responsibles, // Guarda como um array

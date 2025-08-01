@@ -41,7 +41,7 @@ app.http('updateOrder', {
 
             return { status: 200, body: "Ordem atualizada com sucesso." };
         } catch (error) {
-            context.log.error(`Erro ao atualizar a ordem: ${error.message}`);
+            context.log(`Erro ao atualizar a ordem: ${error.message}`);
             return { status: 500, body: "Erro ao atualizar a ordem das tarefas." };
         }
     }
