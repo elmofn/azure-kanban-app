@@ -23,8 +23,8 @@ app.http('createTask', {
         context.log('HTTP trigger function: Criando uma nova tarefa.');
         try {
             const taskData = await request.json();
-            if (!taskData.description || !taskData.responsible) {
-                return { status: 400, body: "Descrição e responsável são obrigatórios." };
+            if (!taskData.title || !taskData.description || !taskData.responsible) {
+                return { status: 400, body: "Título, Descrição e Responsável são obrigatórios." };
             }
 
             // Transforma a string de responsáveis num array, removendo espaços extra
@@ -32,6 +32,7 @@ app.http('createTask', {
 
             const newTask = {
                 id: uuidv4(),
+                title: taskData.title,
                 description: taskData.description,
                 responsible: responsibles, // Guarda como um array
                 azureLink: taskData.azureLink || '',

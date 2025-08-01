@@ -232,6 +232,11 @@
         <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-md mx-4">
             <h2 id="modalTitle" class="text-2xl font-bold text-custom-darkest dark:text-custom-light mb-6">Nova Tarefa</h2>
             <form id="taskForm">
+                <!-- Campo de Título -->
+                <div class="mb-4">
+                    <label for="taskTitle" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Título</label>
+                    <input type="text" id="taskTitle" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
+                </div>
                 <div class="mb-4">
                     <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
                     <input type="text" id="taskDescription" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
@@ -558,7 +563,8 @@
                 }
 
                 contentDiv.innerHTML = `
-                    <p class="text-custom-darkest dark:text-custom-light pr-8 description-truncate" title="${task.description}">${task.description}</p>
+                    <p class="font-bold text-custom-darkest dark:text-custom-light pr-8">${task.title}</p>
+                    <p class="text-sm text-custom-dark dark:text-custom-medium pr-8 description-truncate mt-1" title="${task.description}">${task.description}</p>
                     ${approveButton}
                     <div class="mt-3 pt-2 border-t border-custom-medium/50 dark:border-custom-dark flex justify-between items-center">
                         <div class="flex items-center gap-1">
@@ -670,7 +676,7 @@
                     return `
                         <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
                             <td class="px-6 py-4 font-mono text-xs text-white-500" title="${task.id}">${shortId}</td>
-                            <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
+                            <td class="px-6 py-4"><div class="font-semibold text-custom-darkest dark:text-custom-light" title="${task.description}">${task.title}</div></td>
                             <td class="px-6 py-4 whitespace-nowrap">${projectTag}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${task.responsible}</td>
                             <td class="px-6 py-4 whitespace-nowrap">${statusLabels[task.status] || task.status}</td>
@@ -1000,6 +1006,7 @@
                 editingTaskId = taskId;
 
                 document.getElementById('modalTitle').textContent = 'Editar Tarefa';
+                document.getElementById('taskTitle').value = taskToEdit.title
                 document.getElementById('taskDescription').value = taskToEdit.description;
                 // Converte o array de volta para uma string para o input
                 document.getElementById('taskResponsible').value = Array.isArray(taskToEdit.responsible) ? taskToEdit.responsible.join(', ') : taskToEdit.responsible;
@@ -1052,6 +1059,7 @@
                 }
 
                 const taskPayload = {
+                    title: document.getElementById('taskTitle').value,
                     description: document.getElementById('taskDescription').value,
                     responsible: document.getElementById('taskResponsible').value,
                     azureLink: document.getElementById('taskAzureLink').value,
