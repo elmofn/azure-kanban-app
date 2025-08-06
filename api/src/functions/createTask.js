@@ -43,6 +43,7 @@ app.http('createTask', {
                 azureLink: taskData.azureLink || '',
                 project: taskData.project || '',
                 projectColor: taskData.projectColor || '#526D82',
+                priority: taskData.priority || 'Média',
                 status: 'todo',
                 createdAt: new Date().toISOString(),
                 history: [{ status: 'todo', timestamp: new Date().toISOString() }],
