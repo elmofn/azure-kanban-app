@@ -729,7 +729,7 @@
                 }
 
                 contentDiv.innerHTML = `
-                    <p class="font-bold text-custom-darkest dark:text-custom-light pr-8">${task.title || ''}</p>
+                    <p class="text-custom-darkest dark:text-custom-light pr-8">${task.title || ''}</p>
                     <p class="text-sm text-custom-dark dark:text-custom-medium pr-8 description-truncate mt-1" title="${task.description}">${task.description}</p>
                     ${approveButton}
                     <div class="mt-3 pt-2 border-t border-custom-medium/50 dark:border-custom-dark flex justify-between items-center">
@@ -836,11 +836,9 @@
                         projectTag = `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>`;
                     }
 
-                    const shortId = task.id ? task.id.substring(0, 8) : 'N/A';
-
                     return `
                         <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
-                            <td class="px-6 py-4 font-mono text-xs text-white-500" title="${task.id}">${shortId}</td>
+                            <td class="px-6 py-4 font-mono text-xs text-white-500" title="${task.id}">${task.id}</td>
                             <td class="px-6 py-4">
                                 <div class="font-semibold text-custom-darkest dark:text-custom-light" title="${task.description}">${task.title}</div>
                             </td>
@@ -1332,6 +1330,18 @@
                 const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
                 const responsibleNames = responsibleTags.map(tag => tag.firstChild.textContent);
 
+                // --- LÓGICA DA DATA CORRIGIDA ---
+                const dueDateValue = document.getElementById('taskDueDate').value;
+                let dueDateISO = null;
+                if (dueDateValue) {
+                    // Cria a data em UTC para evitar problemas de fuso horário
+                    const dateParts = dueDateValue.split('-');
+                    const year = parseInt(dateParts[0], 10);
+                    const month = parseInt(dateParts[1], 10) - 1; // Mês em JS é 0-11
+                    const day = parseInt(dateParts[2], 10);
+                    dueDateISO = new Date(Date.UTC(year, month, day)).toISOString();
+                }
+
                 const taskPayload = {
                     title: document.getElementById('taskTitle').value,
                     description: document.getElementById('taskDescription').value,
@@ -1339,7 +1349,7 @@
                     azureLink: document.getElementById('taskAzureLink').value,
                     project: projectName,
                     projectColor: document.getElementById('taskProjectColor').value,
-                    dueDate: document.getElementById('taskDueDate').value
+                    dueDate: dueDateISO // Usa a nova variável
                 };
 
                 try {
