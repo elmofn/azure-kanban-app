@@ -52,51 +52,6 @@
          .dark tr.highlight {
              background-color: #526D82 !important;
         }
-        /* Estilos do Indicador de Carregamento */
-        .loader {
-        width: fit-content;
-        font-weight: bold;
-        font-family: monospace;
-        font-size: 30px;
-        /* O fundo que "varre" o texto. Preto no modo claro. */
-        background:linear-gradient(90deg,#000 50%,#0000 0) right/200% 100%;
-        animation: l21 2s infinite linear;
-        }
-        .dark .loader {
-            /* No modo escuro, o fundo que "varre" é a cor clara do texto. */
-            background:linear-gradient(90deg,#DDE6ED 50%,#0000 0) right/200% 100%;
-        }
-        .loader::before {
-        content :"Carregando...";
-        color: #0000; /* Torna o texto transparente */
-        padding: 0 5px;
-        background: inherit; /* Herda o fundo animado do pai */
-        /* Cria um novo fundo por baixo, que é revelado. Branco no modo claro. */
-        background-image: linear-gradient(90deg,#fff 50%,#000 0);
-        -webkit-background-clip:text;
-                background-clip:text;
-        }
-        .dark .loader::before {
-            /* No modo escuro, o fundo revelado é a cor escura do texto. */
-            background-image: linear-gradient(90deg,#27374D 50%,#DDE6ED 0);
-        }
-
-        @keyframes l21{
-        100%{background-position: left}
-        }
-        .toast {
-            animation: toast-fade-in-out 3s ease-in-out forwards;
-        }
-        @keyframes toast-fade-in-out {
-            0% { opacity: 0; transform: translateX(100%); }
-            15% { opacity: 1; transform: translateX(0); }
-            85% { opacity: 1; transform: translateX(0); }
-            100% { opacity: 0; transform: translateX(100%); }
-        }
-        .drop-target-highlight {
-            border: 2px dashed #526D82 !important;
-            background-color: rgba(157, 178, 191, 0.2) !important;
-        }
         /* Animação para Novos Cartões */
         @keyframes card-fade-in {
             from { opacity: 0; transform: translateY(10px); }
@@ -152,6 +107,27 @@
         }
         .tag-remove-btn:hover {
             background-color: rgba(0,0,0,0.4);
+        }
+
+        /* Estilos para a Animação de Revelação do Conteúdo */
+        #main-content.content-hidden {
+            opacity: 0;
+            transform: translateY(-20px); /* Alterado para vir de cima */
+        }
+
+        #main-content.content-reveal {
+            animation: reveal-content 1.5s ease-out forwards;
+        }
+
+        @keyframes reveal-content {
+            from {
+                opacity: 0;
+                transform: translateY(-20px); /* Alterado para vir de cima */
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
             </style>
@@ -219,11 +195,14 @@
         </header>
 
         <!-- Conteúdo Principal -->
-        <main id="main-content" class="container mx-auto p-4 lg:p-6">
-            <!-- Indicador de Carregamento -->
-            <div id="loader-container" class="flex justify-center items-center py-20">
-                <div class="loader"></div>
+         <!-- Indicador de Carregamento -->
+           <div id="loader-container" class="fixed inset-0 z-50 flex justify-center items-center bg-white dark:bg-custom-dark">
+                <video id="loader-video" autoplay muted loop playsinline class="absolute top-0 left-0 w-full h-full object-cover">
+                    <source src="https://syncboard.blob.core.windows.net/geral/Apresentação1.mp4" type="video/mp4">
+                    O seu navegador não suporta vídeos.
+                </video>
             </div>
+        <main id="main-content" class="container mx-auto p-4 lg:p-6">
             <!-- Visualização Kanban -->
             <div id="kanbanView" class="hidden">
                 <div id="board-columns" class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -439,30 +418,39 @@
             async function fetchAndRenderTasks() {
                 // Se já estiver a renderizar, não faz nada para evitar sobreposições
                 if (isRendering) return; 
-                isRendering = true; // "Fecha" o semáforo
+                isRendering = true;
 
                 try {
-                    const response = await fetch('/api/getTasks');
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    tasks = await response.json();
+                    // Cria duas "promessas" que irão correr em paralelo:
+                    // 1. A busca dos dados da API.
+                    const fetchData = fetch('/api/getTasks').then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    });
 
-                    // CORREÇÃO: Esconde o contentor do loader
+                    // 2. Um temporizador que garante uma espera mínima de 5 segundos.
+                    const minDisplayTime = new Promise(resolve => setTimeout(resolve, 5000));
+
+                    // Espera que AMBAS as promessas estejam concluídas.
+                    const [fetchedTasks] = await Promise.all([fetchData, minDisplayTime]);
+
+                    tasks = fetchedTasks;
+
+                    // Esconde o loader e mostra o conteúdo principal
                     loaderContainerEl.classList.add('hidden');
-
+                    mainContentEl.classList.add('content-reveal');
                     updateActiveView(); 
                     renderArchivedTasks();
 
-                    // Garante que os ícones são renderizados DEPOIS de o HTML ser atualizado
                     lucide.createIcons(); 
 
-                } catch (error) {
+                } catch (error) { // CORREÇÃO: Adicionadas as chavetas {} em volta do bloco catch
                     console.error("Falha ao buscar tarefas:", error);
-                    // CORREÇÃO: Mostra uma mensagem de erro dentro do loader em caso de falha
                     loaderContainerEl.innerHTML = '<p class="text-red-500">Falha ao carregar as tarefas.</p>';
                 } finally {
-                    isRendering = false; // "Abre" o semáforo no final, quer tenha sucesso ou falhe
+                    isRendering = false;
                 }
             }
 
@@ -655,6 +643,8 @@
             // --- ELEMENTOS DOM ---
             const responsibleFilterEl = document.getElementById('responsibleFilter');
             const kanbanViewEl = document.getElementById('kanbanView');
+            const mainContentEl = document.getElementById('main-content');
+            mainContentEl.classList.add('content-hidden');
             const listViewEl = document.getElementById('listView');
             const archivedViewEl = document.getElementById('archivedView');
             const viewSwitcherEl = document.getElementById('view-switcher');
@@ -1701,6 +1691,14 @@
             });
 
             // --- INICIALIZAÇÃO ---
+            // NOVO: Tenta dar play no vídeo de carregamento manualmente
+            const loaderVideo = document.getElementById('loader-video');
+            if (loaderVideo) {
+                loaderVideo.play().catch(error => {
+                    console.warn("O autoplay do vídeo foi bloqueado pelo navegador. Isto é normal em alguns ambientes.", error);
+                });
+            }
+
             applyTheme();
             fetchAndRenderTasks(); // <-- PEGA AS TAKS PRA NÓS bb
             connectToSignalR(); // <-- Colaborar em tempo real
