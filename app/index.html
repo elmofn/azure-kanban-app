@@ -672,7 +672,14 @@
             const formatDate = (dateString) => {
                 if (!dateString) return '';
                 const date = new Date(dateString);
-                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                // A opção timeZone: 'UTC' diz ao formatador para ignorar o fuso horário local
+                // e formatar a data tal como ela está (ex: 2025-08-10T00:00:00Z será sempre 10/08/2025).
+                return date.toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric', 
+                    timeZone: 'UTC' 
+                });
             };
             const formatDateTime = (dateString) => {
                 if (!dateString) return '';
