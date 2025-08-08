@@ -344,19 +344,6 @@
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Data Prevista</h3>
                         <p id="modal-info-dueDate" class="text-custom-darkest dark:text-custom-light"></p>
                     </div>
-                    <!-- Seção de Anexos -->
-                    <div class="border-t border-custom-medium/30 dark:border-custom-dark/50 pt-4">
-                        <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-2">Anexos</h3>
-                        <!-- Lista de anexos existentes -->
-                        <div id="attachment-list" class="space-y-2 mb-2">
-                            <!-- Os anexos serão inseridos aqui pelo JavaScript -->
-                        </div>
-                        <!-- Formulário de upload -->
-                        <form id="attachment-form">
-                            <input type="file" id="attachment-input" class="text-sm text-custom-dark dark:text-custom-light file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-custom-dark/50 file:text-white hover:file:bg-custom-dark">
-                            <button type="submit" id="upload-btn" class="hidden mt-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-1 px-3 rounded-lg">Carregar</button>
-                        </form>
-                    </div>
                     <div id="modal-info-azure-link-container" class="hidden border-t border-custom-medium/30 dark:border-custom-dark/50 pt-4">
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Link Azure DevOps</h3>
                         <a id="modal-info-azure-link" href="#" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline break-all"></a>
@@ -910,7 +897,7 @@
                                     </th>
                                     <!-- NOVO CABEÇALHO DE COLUNA -->
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="dueDate">
-                                        <div class="flex items-center">Prevista ${getSortIndicator('dueDate')}</div>
+                                        <div class="flex items-center">Data Prevista ${getSortIndicator('dueDate')}</div>
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
                                 </tr>
@@ -1121,9 +1108,6 @@
                 } else {
                     dueDateContainer.classList.add('hidden');
                 }
-                
-                // Chama a função para renderizar os anexos
-                renderAttachments(task);
 
                 // Combina histórico e comentários num único feed de atividade
                 const historyItems = (task.history || []).map(item => ({ ...item, type: 'history' }));
@@ -1161,29 +1145,6 @@
                 document.getElementById('taskHistoryModal').classList.remove('hidden');
                 lucide.createIcons();
             };
-
-            const renderAttachments = (task) => {
-                const attachmentList = document.getElementById('attachment-list');
-                attachmentList.innerHTML = '';
-
-                if (!task.attachments || task.attachments.length === 0) {
-                    attachmentList.innerHTML = '<p class="text-xs text-custom-dark dark:text-custom-medium">Nenhum anexo.</p>';
-                    return;
-                }
-
-                task.attachments.forEach(attachment => {
-                    const blobName = `${task.id}-${attachment.name}`;
-                    const attachmentEl = document.createElement('button');
-                    attachmentEl.type = 'button';
-                    attachmentEl.className = 'attachment-link-btn flex items-center gap-2 text-blue-500 hover:underline text-sm';
-                    attachmentEl.dataset.taskId = task.id;
-                    attachmentEl.dataset.blobName = blobName;
-                    attachmentEl.innerHTML = `<i data-lucide="paperclip" class="w-4 h-4"></i> ${attachment.name}`;
-                    attachmentList.appendChild(attachmentEl);
-                });
-                lucide.createIcons();
-            };
-
 
             const populateResponsibleFilter = () => {
                 // Usa flatMap para achatar todos os arrays de responsáveis num único array
@@ -1341,52 +1302,6 @@
                             }
                         }
                     );
-                }
-            });
-
-            document.getElementById('attachment-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const fileInput = document.getElementById('attachment-input');
-                const file = fileInput.files[0];
-                if (!file || !lastInteractedTaskId) return;
-
-                const uploadBtn = document.getElementById('upload-btn');
-                uploadBtn.textContent = 'A carregar...';
-                uploadBtn.disabled = true;
-
-                const formData = new FormData();
-                formData.append('file', file);
-
-                try {
-                    const response = await fetch(`/api/uploadAttachment/${lastInteractedTaskId}`, {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Falha no upload do anexo.');
-                    }
-
-                    showToast('Anexo carregado com sucesso!');
-                    fileInput.value = ''; // Limpa o input
-                    uploadBtn.classList.add('hidden');
-                    // O SignalR irá tratar de atualizar a UI
-                } catch (error) {
-                    console.error("Erro ao carregar anexo:", error);
-                    showToast('Falha no upload do anexo.', 'error');
-                } finally {
-                    uploadBtn.textContent = 'Carregar';
-                    uploadBtn.disabled = false;
-                }
-            });
-
-            // Mostra o botão de upload assim que um ficheiro é selecionado
-            document.getElementById('attachment-input').addEventListener('change', () => {
-                const uploadBtn = document.getElementById('upload-btn');
-                if (document.getElementById('attachment-input').files.length > 0) {
-                    uploadBtn.classList.remove('hidden');
-                } else {
-                    uploadBtn.classList.add('hidden');
                 }
             });
 
@@ -1686,32 +1601,6 @@
                     } catch (error) { 
                         console.error("Erro ao restaurar tarefa:", error);
                         showToast('Falha ao restaurar a tarefa.', 'error');
-                    }
-                }
-                else if (targetButton.classList.contains('attachment-link-btn')) {
-                    const taskId = targetButton.dataset.taskId;
-                    const blobName = targetButton.dataset.blobName;
-
-                    targetButton.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> A gerar link...`;
-                    lucide.createIcons();
-
-                    try {
-                        const response = await fetch(`/api/getAttachmentSasUrl/${taskId}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ blobName })
-                        });
-                        if (!response.ok) throw new Error('Falha ao obter o link seguro.');
-
-                        const { sasUrl } = await response.json();
-                        window.open(sasUrl, '_blank'); // Abre o link seguro numa nova aba
-                    } catch (error) {
-                        console.error("Erro ao obter SAS URL:", error);
-                        showToast('Não foi possível abrir o anexo.', 'error');
-                    } finally {
-                        // Restaura o botão ao seu estado original
-                        targetButton.innerHTML = `<i data-lucide="paperclip" class="w-4 h-4"></i> ${blobName.replace(taskId + '-', '')}`;
-                        lucide.createIcons();
                     }
                 }
             });
