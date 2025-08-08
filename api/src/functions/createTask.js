@@ -20,13 +20,26 @@ app.http('createTask', {
     handler: async (request, context) => {
         context.log('HTTP trigger function: Criando uma nova tarefa com ID sequencial.');
         try {
-            // 1. Incrementa o contador de forma atómica. Esta é a única fonte da verdade.
+            // 1. Tenta criar o documento do contador se ele não existir.
+            try {
+                await container.items.create({ id: "taskCounter", currentId: 0 });
+                context.log("Documento do contador inicializado com sucesso.");
+            } catch (error) {
+                if (error.code === 409) { // 409 Conflict
+                    
+                } else {
+                    throw error; // Propaga outros erros inesperados.
+                }
+            }
+
+            // 2. Usa a operação 'Patch' com 'incr' para incrementar o contador de forma atómica.
+            // Esta operação acontece no servidor da base de dados, eliminando a condição de corrida.
             const operations = [{ op: 'incr', path: '/currentId', value: 1 }];
             const { resource: updatedCounter } = await container.item("taskCounter", "taskCounter").patch(operations);
             const newNumericId = updatedCounter.currentId;
 
             const newTaskId = `TC-${String(newNumericId).padStart(3, '0')}`;
-
+            
             const taskData = await request.json();
             if (!taskData.title || !taskData.description || !taskData.responsible) {
                 return { status: 400, body: "Título, Descrição e Responsável são obrigatórios." };
@@ -51,9 +64,9 @@ app.http('createTask', {
                 dueDate: taskData.dueDate || null
             };
 
-            // 2. Cria a nova tarefa com o ID único garantido.
+            // 3. Cria a nova tarefa com o ID único garantido.
             await container.items.create(newTask);
-
+            
             context.extraOutputs.set(signalROutput, { target: 'tasksUpdated', arguments: [] });
             return { jsonBody: newTask };
         } catch (error) {
