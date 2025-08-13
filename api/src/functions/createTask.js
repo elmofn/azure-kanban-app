@@ -13,11 +13,26 @@ const signalROutput = output.generic({
     connectionStringSetting: 'AzureSignalRConnectionString',
 });
 
+// Função auxiliar para obter o usuário
+function getUser(request) {
+    const header = request.headers.get('x-ms-client-principal');
+    if (!header) return null;
+    const encoded = Buffer.from(header, 'base64');
+    const decoded = encoded.toString('ascii');
+    return JSON.parse(decoded);
+}
+
 app.http('createTask', {
     methods: ['POST'],
     authLevel: 'anonymous',
     extraOutputs: [signalROutput],
     handler: async (request, context) => {
+        // --- 1. VERIFICAÇÃO DE USUÁRIO ---
+        const user = getUser(request);
+        if (!user) {
+            return { status: 401, body: "Acesso não autorizado." };
+        }
+
         context.log('HTTP trigger function: Criando uma nova tarefa com ID sequencial.');
         try {
             // 1. Incrementa o contador de forma atómica. Esta é a única fonte da verdade.
@@ -46,6 +61,7 @@ app.http('createTask', {
                 priority: taskData.priority || 'Média',
                 status: 'todo',
                 createdAt: new Date().toISOString(),
+                createdBy: user.userDetails,
                 history: [{ status: 'todo', timestamp: new Date().toISOString() }],
                 order: -Date.now(),
                 dueDate: taskData.dueDate || null

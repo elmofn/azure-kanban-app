@@ -9,6 +9,7 @@ Publish
 *.suo
 *.cscfg
 *.Cache
+**/node_modules
 project.lock.json
 
 /packages
@@ -21,6 +22,7 @@ project.lock.json
 .secrets
 appsettings.json
 local.settings.json
+api/local.settings.json
 
 node_modules
 dist

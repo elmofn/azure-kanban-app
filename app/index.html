@@ -409,7 +409,7 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // --- ESTADO DA APLICAÇÃO ---
             let tasks = []; // A lista de tarefas agora começa vazia
             let isRendering = false;
@@ -423,6 +423,23 @@
             let taskIdToDelete = null;
             let editingTaskId = null;
             let taskBeingMoved = null;
+            let currentUser = null;
+
+            /**
+            * NOVA FUNÇÃO: Busca os dados do usuário logado no endpoint do Static Web Apps.
+            * Retorna o objeto clientPrincipal ou null se não estiver logado.
+            */
+            async function getUserInfo() {
+                try {
+                    const response = await fetch('/.auth/me');
+                    if (!response.ok) return null;
+                    const payload = await response.json();
+                    return payload.clientPrincipal;
+                } catch (error) {
+                    console.error('Não foi possível obter informações do usuário.', error);
+                    return null;
+                }
+            }
 
             // --- FUNÇÃO PARA BUSCAR DADOS DA API ---
             async function fetchAndRenderTasks() {
@@ -1305,24 +1322,24 @@
                 }
             });
 
+            // NOVO CÓDIGO SIMPLIFICADO
             document.getElementById('add-comment-btn').addEventListener('click', async () => {
                 const commentInput = document.getElementById('comment-input');
                 const commentText = commentInput.value.trim();
                 if (!commentText || !lastInteractedTaskId) return;
 
-                // Por agora, vamos usar um nome fixo. No futuro, isto viria da autenticação.
-                const commentAuthor = "Usuário"; 
+                // A variável 'commentAuthor' foi removida. Não é mais necessária.
 
                 try {
                     const response = await fetch(`/api/addComment/${lastInteractedTaskId}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: commentText, author: commentAuthor })
+                        // Enviamos apenas o texto. O backend cuidará do resto.
+                        body: JSON.stringify({ text: commentText })
                     });
                     if (!response.ok) throw new Error('Falha ao adicionar o comentário.');
 
-                    commentInput.value = ''; // Limpa o campo
-                    // O SignalR irá tratar de atualizar a UI
+                    commentInput.value = '';
                 } catch (error) {
                     console.error("Erro ao adicionar comentário:", error);
                     showToast('Falha ao adicionar o comentário.', 'error');
@@ -1704,8 +1721,23 @@
                 }
             });
 
-            // --- INICIALIZAÇÃO ---
-            // NOVO: Tenta dar play no vídeo de carregamento manualmente
+            // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+
+            // 1. Buscamos as informações do usuário primeiro.
+            currentUser = await getUserInfo();
+
+            // 2. Verificamos se o usuário está logado. Se não estiver, o app não carrega.
+            // O SWA já deve ter redirecionado para a tela de login do Google.
+            if (!currentUser) {
+                document.getElementById('loader-container').innerHTML = '<p class="text-xl text-white">Redirecionando para o login...</p>';
+                console.error("Usuário não autenticado. Acesso negado.");
+                return; // Interrompe a execução do script.
+            }
+
+            // Se chegamos aqui, o usuário é um membro validado da organização.
+            console.log(`Usuário ${currentUser.userDetails} autenticado com sucesso.`);
+
+            // Tenta dar play no vídeo de carregamento manualmente
             const loaderVideo = document.getElementById('loader-video');
             if (loaderVideo) {
                 loaderVideo.play().catch(error => {
