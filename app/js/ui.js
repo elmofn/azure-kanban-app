@@ -35,7 +35,8 @@ export const createTaskElement = (task) => {
     taskCard.dataset.taskId = task.id;
 
     const contentDiv = document.createElement('div');
-    contentDiv.className = 'p-4 flex-grow'; // Adicionado flex-grow para empurrar a barra para baixo
+    // --- CORREÇÃO AQUI: Adicionamos a classe 'relative' de volta ---
+    contentDiv.className = 'p-4 flex-grow relative';
 
     let approveButton = '';
     if (task.status === 'homologation') {
@@ -69,7 +70,6 @@ export const createTaskElement = (task) => {
         `;
     }
 
-    // --- MUDANÇA 1: O ID foi removido de perto do título ---
     contentDiv.innerHTML = `
         <p class="text-custom-darkest dark:text-custom-light pr-8 font-semibold" title="${task.description}">${task.title || ''}</p>
         ${approveButton}
@@ -87,18 +87,12 @@ export const createTaskElement = (task) => {
     `;
     taskCard.appendChild(contentDiv);
 
-    // --- MUDANÇA 2: A nova barra inferior que mostra o Projeto e o ID ---
     if (task.project || task.id) {
         const bottomBar = document.createElement('div');
-        // Usamos flexbox para alinhar os itens nas extremidades
         bottomBar.className = 'flex justify-between items-center text-xs text-white px-4 py-0.5';
-        // A cor da barra é a cor do projeto, ou uma cor padrão se não houver projeto
         bottomBar.style.backgroundColor = task.projectColor || '#526D82'; 
 
-        // Adiciona o nome do projeto (ou um espaço vazio para manter o alinhamento)
         const projectSpan = `<span>${task.project || ''}</span>`;
-        
-        // Adiciona o ID da tarefa com uma fonte monoespaçada para destaque
         const idSpan = `<span class="font-mono">${task.id}</span>`;
 
         bottomBar.innerHTML = `${projectSpan}${idSpan}`;
@@ -158,15 +152,26 @@ export function renderListView() {
         let projectTag = task.project ? `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>` : '';
         return `
             <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
-                <td class="px-6 py-4 font-mono text-xs text-white-500" title="${task.id}">${task.id}</td>
-                <td class="px-6 py-4"><div><div class="text-custom-darkest dark:text-custom-light" title="${task.description}">${task.title}</div></div></td>
+                
+                <td class="px-6 py-4 font-mono text-xs text-white-500 whitespace-nowrap" title="${task.id}">${task.id}</td>
+                
+                <td class="px-6 py-4">
+                    <div><div class="text-custom-darkest dark:text-custom-light" title="${task.description}">${task.title}</div></div>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">${projectTag}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${statusLabels[task.status] || task.status}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${task.dueDate ? formatDate(task.dueDate) : ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center gap-2"><button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>${azureLinkIcon}<button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button></div></td>
-            </tr>`;
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                        <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
+                        ${azureLinkIcon}
+                        <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `;
     }).join('');
     const tableHtml = `
         <div class="bg-white dark:bg-custom-darkest/40 rounded-lg shadow overflow-hidden">
@@ -179,7 +184,7 @@ export function renderListView() {
                         <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="responsible"><div class="flex items-center">Responsável ${getSortIndicator('responsible')}</div></th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="status"><div class="flex items-center">Estado ${getSortIndicator('status')}</div></th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="createdAt"><div class="flex items-center">Criação ${getSortIndicator('createdAt')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="dueDate"><div class="flex items-center">Data Prevista ${getSortIndicator('dueDate')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="dueDate"><div class="flex items-center">Previsão ${getSortIndicator('dueDate')}</div></th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>

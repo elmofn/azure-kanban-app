@@ -73,3 +73,12 @@ export async function deleteComment(taskId, commentIndex) {
     if (!response.ok) throw new Error('Falha ao excluir o comentário.');
     return await response.json();
 }
+
+export async function updateProjectColor(projectName, newColor) {
+    const response = await fetch(`/api/updateProjectColor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectName, newColor })
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar a cor do projeto.');
+}

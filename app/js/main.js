@@ -102,69 +102,89 @@ function initializeEventListeners() {
     document.getElementById('cancelBtn').addEventListener('click', () => taskModal.classList.add('hidden'));
 
     taskForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const projectName = document.getElementById('taskProject').value.trim();
-    const newColor = document.getElementById('taskProjectColor').value;
-    
-    // Constrói o payload da tarefa como antes
-    const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
-    const dueDateValue = document.getElementById('taskDueDate').value;
-    let dueDateISO = null;
-    if (dueDateValue) {
-        const dateParts = dueDateValue.split('-');
-        dueDateISO = new Date(Date.UTC(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10))).toISOString();
-    }
-    const taskPayload = {
-        title: document.getElementById('taskTitle').value,
-        description: document.getElementById('taskDescription').value,
-        responsible: responsibleTags.map(tag => tag.firstChild.textContent).join(','),
-        project: projectName,
-        projectColor: newColor,
-        priority: document.getElementById('taskPriority').value,
-        dueDate: dueDateISO,
-        azureLink: document.getElementById('taskAzureLink').value
-    };
+        const projectName = document.getElementById('taskProject').value.trim();
+        const newColor = document.getElementById('taskProjectColor').value;
 
-    const saveTaskAction = async () => {
-        try {
-            const apiCall = state.editingTaskId ? api.updateTask(state.editingTaskId, taskPayload) : api.createTask(taskPayload);
-            const savedTask = await apiCall;
-            state.taskToHighlightTemporarily = savedTask.id;
-            taskModal.classList.add('hidden');
-        } catch (error) {
-            console.error("Erro ao salvar tarefa:", error);
-            alert('Falha ao salvar a tarefa.');
+        // --- LÓGICA DE VERIFICAÇÃO DE COR CORRIGIDA ---
+
+        // 1. Encontra a cor original do projeto, se ele já existir.
+        let originalProjectColor = null;
+        const existingProjectTask = state.tasks.find(t => t.project === projectName);
+        if (existingProjectTask) {
+            originalProjectColor = existingProjectTask.projectColor;
         }
-    };
-    
-    // Lógica de verificação da cor
-    const originalTask = state.editingTaskId ? state.tasks.find(t => t.id === state.editingTaskId) : null;
-    const projectHasChangedColor = originalTask && originalTask.project === projectName && originalTask.projectColor !== newColor;
-    
-    if (projectHasChangedColor) {
-        showConfirmModal(
-            'Atualizar Cor do Projeto',
-            `Você alterou a cor do projeto "${projectName}". Deseja aplicar esta nova cor para TODAS as tarefas deste projeto?`,
-            async () => { // Ação se o usuário clicar "Confirmar"
-                try {
-                    await api.updateProjectColor(projectName, newColor);
-                } catch (error) {
-                    console.error("Erro ao atualizar a cor global do projeto:", error);
-                }
-                await saveTaskAction(); // Salva a tarefa atual independentemente do resultado
-            },
-            async () => { // Ação se o usuário clicar "Cancelar" (neste caso, o botão de cancelar do modal)
-                await saveTaskAction(); // Apenas salva a tarefa atual com a nova cor
+
+        // 2. Decide se o modal de confirmação deve ser exibido.
+        // Isso acontece se o projeto já existia E a cor foi alterada.
+        const shouldPromptColorChange = originalProjectColor && originalProjectColor !== newColor;
+
+        // Constrói o payload da tarefa (o que será salvo)
+        const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
+        const dueDateValue = document.getElementById('taskDueDate').value;
+        let dueDateISO = null;
+        if (dueDateValue) {
+            const dateParts = dueDateValue.split('-');
+            dueDateISO = new Date(Date.UTC(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10))).toISOString();
+        }
+        const taskPayload = {
+            title: document.getElementById('taskTitle').value,
+            description: document.getElementById('taskDescription').value,
+            responsible: responsibleTags.map(tag => tag.firstChild.textContent).join(','),
+            project: projectName,
+            projectColor: newColor,
+            priority: document.getElementById('taskPriority').value,
+            dueDate: dueDateISO,
+            azureLink: document.getElementById('taskAzureLink').value
+        };
+
+        // Ação de salvar a tarefa atual (será reutilizada)
+        const saveTaskAction = async () => {
+            try {
+                const apiCall = state.editingTaskId ? api.updateTask(state.editingTaskId, taskPayload) : api.createTask(taskPayload);
+                const savedTask = await apiCall;
+                state.taskToHighlightTemporarily = savedTask.id;
+                taskModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Erro ao salvar tarefa:", error);
+                alert('Falha ao salvar a tarefa.');
             }
-        );
-        // Modifica o texto dos botões para ficar mais claro
-        document.getElementById('confirmDeleteBtn').textContent = 'Sim, em todas';
-        document.getElementById('cancelDeleteBtn').textContent = 'Não, só nesta';
-    } else {
-        await saveTaskAction(); // Se não houver mudança de cor, apenas salva a tarefa
-    }
-});
+        };
+        
+        // 3. Executa a lógica
+        if (shouldPromptColorChange) {
+            showConfirmModal(
+                'Atualizar Cor do Projeto',
+                `Você alterou a cor do projeto "${projectName}". Deseja aplicar esta nova cor para TODAS as tarefas deste projeto?`,
+                // Ação se o usuário clicar "Sim, em todas"
+                async () => { 
+                    try {
+                        // Primeiro, atualiza a cor globalmente
+                        await api.updateProjectColor(projectName, newColor);
+                    } catch (error) {
+                        console.error("Erro ao atualizar a cor global do projeto:", error);
+                        alert("Falha ao atualizar a cor de todas as tarefas.");
+                    }
+                    // Depois, salva a tarefa atual (a API do SignalR irá forçar a atualização de tudo)
+                    await saveTaskAction();
+                }
+            );
+            // Modifica o texto dos botões para ficar mais claro
+            document.getElementById('confirmDeleteBtn').textContent = 'Sim, em todas';
+            document.getElementById('cancelDeleteBtn').textContent = 'Não, só nesta';
+
+            // Define a ação do botão "Cancelar" (neste caso, "Não, só nesta")
+            document.getElementById('cancelDeleteBtn').onclick = async () => {
+                await saveTaskAction(); // Apenas salva a tarefa atual com a nova cor
+                deleteConfirmModal.classList.add('hidden');
+            };
+
+        } else {
+            // Se não houver mudança de cor, ou se o projeto for novo, apenas salva a tarefa
+            await saveTaskAction();
+        }
+    });
     
     // Modal de Histórico
     document.getElementById('closeHistoryBtn').addEventListener('click', () => historyModal.classList.add('hidden'));
@@ -336,18 +356,18 @@ function showConfirmModal(title, message, onConfirm, onCancel = null) {
     const cancelButton = document.getElementById('cancelDeleteBtn');
 
     // Restaura o texto padrão dos botões
-    confirmButton.textContent = 'Excluir';
+    confirmButton.textContent = 'Confirmar'; // Mudei de 'Excluir' para um termo mais genérico
     cancelButton.textContent = 'Cancelar';
 
-    confirmTitle.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-red-500"></i> ${title}`;
+    confirmTitle.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-yellow-500"></i> ${title}`; // Mudei a cor para amarelo, mais genérico que vermelho
     confirmMessage.textContent = message;
     lucide.createIcons();
 
     confirmButton.onclick = () => {
         onConfirm();
+        deleteConfirmModal.classList.add('hidden'); // <-- ESTA LINHA ESTAVA FALTANDO
     };
 
-    // Ação do botão de cancelar
     cancelButton.onclick = () => {
         if (onCancel) {
             onCancel();
