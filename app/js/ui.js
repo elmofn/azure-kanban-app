@@ -35,7 +35,7 @@ export const createTaskElement = (task) => {
     taskCard.dataset.taskId = task.id;
 
     const contentDiv = document.createElement('div');
-    contentDiv.className = 'p-4 relative';
+    contentDiv.className = 'p-4 flex-grow'; // Adicionado flex-grow para empurrar a barra para baixo
 
     let approveButton = '';
     if (task.status === 'homologation') {
@@ -69,8 +69,9 @@ export const createTaskElement = (task) => {
         `;
     }
 
+    // --- MUDANÇA 1: O ID foi removido de perto do título ---
     contentDiv.innerHTML = `
-        <p class="text-custom-darkest dark:text-custom-light pr-8" title="${task.description}">${task.title || ''}</p>
+        <p class="text-custom-darkest dark:text-custom-light pr-8 font-semibold" title="${task.description}">${task.title || ''}</p>
         ${approveButton}
         <div class="mt-3 pt-2 border-t border-custom-medium/50 dark:border-custom-dark flex justify-between items-center">
             <div class="flex items-center gap-1">
@@ -86,13 +87,24 @@ export const createTaskElement = (task) => {
     `;
     taskCard.appendChild(contentDiv);
 
-    if (task.project) {
-        const projectBar = document.createElement('div');
-        projectBar.className = 'text-xs text-white px-4 py-0.5 mt-auto';
-        projectBar.style.backgroundColor = task.projectColor;
-        projectBar.textContent = task.project;
-        taskCard.appendChild(projectBar);
+    // --- MUDANÇA 2: A nova barra inferior que mostra o Projeto e o ID ---
+    if (task.project || task.id) {
+        const bottomBar = document.createElement('div');
+        // Usamos flexbox para alinhar os itens nas extremidades
+        bottomBar.className = 'flex justify-between items-center text-xs text-white px-4 py-0.5';
+        // A cor da barra é a cor do projeto, ou uma cor padrão se não houver projeto
+        bottomBar.style.backgroundColor = task.projectColor || '#526D82'; 
+
+        // Adiciona o nome do projeto (ou um espaço vazio para manter o alinhamento)
+        const projectSpan = `<span>${task.project || ''}</span>`;
+        
+        // Adiciona o ID da tarefa com uma fonte monoespaçada para destaque
+        const idSpan = `<span class="font-mono">${task.id}</span>`;
+
+        bottomBar.innerHTML = `${projectSpan}${idSpan}`;
+        taskCard.appendChild(bottomBar);
     }
+
     return taskCard;
 };
 
@@ -108,7 +120,7 @@ export function renderKanbanView() {
         activeTasks = activeTasks.filter(t => t.project === state.selectedProject);
     }
 
-    const columns = [ { id: 'todo', name: 'A fazer' }, { id: 'stopped', name: 'Parado' }, { id: 'inprogress', name: 'Em Andamento' }, { id: 'homologation', name: 'Em Homologação' }];
+    const columns = [ { id: 'todo', name: 'Fila' }, { id: 'stopped', name: 'Parado' }, { id: 'inprogress', name: 'Em Andamento' }, { id: 'homologation', name: 'Em Homologação' }];
     columns.forEach(col => {
         const columnEl = kanbanViewEl.querySelector(`.kanban-column:has([data-column-id="${col.id}"])`);
         if (columnEl) {
@@ -246,7 +258,9 @@ export function renderTaskHistory(taskId) {
     const task = state.tasks.find(t => t.id === taskId);
     if (!task) return;
     const statusLabels = { todo: 'A fazer', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
-    document.getElementById('modal-info-title').textContent = task.title || '';
+    // Adiciona o ID ao título
+    document.getElementById('modal-info-title').textContent = `${task.id}: ${task.title || ''}`;
+    
     const projectTag = document.getElementById('modal-info-project');
     if (task.project) {
         projectTag.textContent = task.project;
@@ -254,6 +268,34 @@ export function renderTaskHistory(taskId) {
     } else { projectTag.textContent = ''; }
     document.getElementById('modal-info-description').textContent = task.description;
     document.getElementById('modal-info-responsible').textContent = Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible;
+
+     // Cria e insere o seletor de status
+    const detailsContainer = document.querySelector('#taskHistoryModal .md\\:col-span-2.space-y-4');
+    let statusSelectorContainer = document.getElementById('modal-status-selector-container');
+    if (!statusSelectorContainer) {
+        statusSelectorContainer = document.createElement('div');
+        statusSelectorContainer.id = 'modal-status-selector-container';
+        detailsContainer.insertAdjacentElement('afterbegin', statusSelectorContainer); // Insere no topo
+    }
+
+    const statuses = {
+        'todo': 'Fila',
+        'stopped': 'Parado',
+        'inprogress': 'Em Andamento',
+        'homologation': 'Em Homologação'
+    };
+    
+    statusSelectorContainer.innerHTML = `
+        <div class="border-b border-custom-medium/30 dark:border-custom-dark/50 pb-4">
+            <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Status</h3>
+            <select id="modal-status-selector" class="w-full p-2 rounded bg-white/50 dark:bg-custom-dark/50 border border-custom-medium dark:border-custom-dark">
+                ${Object.entries(statuses).map(([key, value]) => 
+                    `<option value="${key}" ${task.status === key ? 'selected' : ''}>${value}</option>`
+                ).join('')}
+            </select>
+        </div>
+    `;
+
     const linkContainer = document.getElementById('modal-info-azure-link-container');
     const linkEl = document.getElementById('modal-info-azure-link');
     if (task.azureLink) {
@@ -419,6 +461,8 @@ export function setupProjectSuggestions() {
     const input = document.getElementById('taskProject');
     const suggestionsContainer = document.getElementById('project-suggestions');
     const colorInput = document.getElementById('taskProjectColor');
+    const colorButton = document.getElementById('color-picker-button');
+    
     const projects = new Map();
     state.tasks.forEach(task => {
         if (task.project && !projects.has(task.project)) {
@@ -426,6 +470,20 @@ export function setupProjectSuggestions() {
         }
     });
     const allProjects = Array.from(projects.keys());
+
+    const selectProject = (name) => {
+        const projectName = name.trim();
+        input.value = projectName;
+        suggestionsContainer.classList.add('hidden');
+        
+        // Se o projeto existir, preenche a cor
+        if (projects.has(projectName)) {
+            const existingColor = projects.get(projectName);
+            colorInput.value = existingColor;
+            colorButton.style.backgroundColor = existingColor;
+        }
+    };
+
     const showSuggestions = (filteredData) => {
         suggestionsContainer.innerHTML = '';
         if (filteredData.length === 0) {
@@ -438,21 +496,27 @@ export function setupProjectSuggestions() {
             suggestionItem.textContent = name;
             suggestionItem.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                input.value = name;
-                colorInput.value = projects.get(name);
-                suggestionsContainer.classList.add('hidden');
+                selectProject(name);
             });
             suggestionsContainer.appendChild(suggestionItem);
         });
         suggestionsContainer.classList.remove('hidden');
     };
+
     const updateSuggestions = () => {
         const query = input.value.toLowerCase();
         const filtered = allProjects.filter(name => name.toLowerCase().includes(query));
         showSuggestions(filtered);
     };
+
     input.addEventListener('focus', updateSuggestions);
     input.addEventListener('input', updateSuggestions);
+    // Adiciona um listener para quando o usuário sai do campo
+    input.addEventListener('blur', () => {
+        setTimeout(() => { // Timeout para permitir o clique na sugestão
+            selectProject(input.value);
+        }, 200);
+    });
 };
 
 export function setupCustomColorPicker() {
@@ -461,8 +525,11 @@ export function setupCustomColorPicker() {
     const colorPalette = document.getElementById('color-palette');
     const nativePickerTrigger = document.getElementById('native-color-picker-trigger');
     const colors = ['#526D82', '#9DB2BF', '#27374D', '#1D5B79', '#468B97', '#EF6262', '#F3AA60', '#F9D949', '#68B984', '#3D5656', '#A25B5B', '#635985'];
+    
     colorPalette.innerHTML = colors.map(color => `<div class="w-full h-8 rounded-md cursor-pointer color-swatch" style="background-color: ${color};" data-color="${color}"></div>`).join('');
+    
     const syncColor = () => { colorButton.style.backgroundColor = colorInput.value; };
+    
     colorButton.addEventListener('click', () => colorPalette.classList.toggle('hidden'));
     colorPalette.addEventListener('click', (e) => {
         const swatch = e.target.closest('.color-swatch');
@@ -473,6 +540,6 @@ export function setupCustomColorPicker() {
         }
     });
     nativePickerTrigger.addEventListener('click', () => colorInput.click());
-    colorInput.addEventListener('input', () => syncColor());
+    colorInput.addEventListener('input', syncColor);
     syncColor();
 };

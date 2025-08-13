@@ -102,24 +102,31 @@ function initializeEventListeners() {
     document.getElementById('cancelBtn').addEventListener('click', () => taskModal.classList.add('hidden'));
 
     taskForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
-        const dueDateValue = document.getElementById('taskDueDate').value;
-        let dueDateISO = null;
-        if (dueDateValue) {
-            const dateParts = dueDateValue.split('-');
-            dueDateISO = new Date(Date.UTC(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10))).toISOString();
-        }
-        const taskPayload = {
-            title: document.getElementById('taskTitle').value,
-            description: document.getElementById('taskDescription').value,
-            responsible: responsibleTags.map(tag => tag.firstChild.textContent).join(','),
-            project: document.getElementById('taskProject').value,
-            projectColor: document.getElementById('taskProjectColor').value,
-            priority: document.getElementById('taskPriority').value,
-            dueDate: dueDateISO,
-            azureLink: document.getElementById('taskAzureLink').value
-        };
+    e.preventDefault();
+
+    const projectName = document.getElementById('taskProject').value.trim();
+    const newColor = document.getElementById('taskProjectColor').value;
+    
+    // Constrói o payload da tarefa como antes
+    const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
+    const dueDateValue = document.getElementById('taskDueDate').value;
+    let dueDateISO = null;
+    if (dueDateValue) {
+        const dateParts = dueDateValue.split('-');
+        dueDateISO = new Date(Date.UTC(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10))).toISOString();
+    }
+    const taskPayload = {
+        title: document.getElementById('taskTitle').value,
+        description: document.getElementById('taskDescription').value,
+        responsible: responsibleTags.map(tag => tag.firstChild.textContent).join(','),
+        project: projectName,
+        projectColor: newColor,
+        priority: document.getElementById('taskPriority').value,
+        dueDate: dueDateISO,
+        azureLink: document.getElementById('taskAzureLink').value
+    };
+
+    const saveTaskAction = async () => {
         try {
             const apiCall = state.editingTaskId ? api.updateTask(state.editingTaskId, taskPayload) : api.createTask(taskPayload);
             const savedTask = await apiCall;
@@ -129,11 +136,56 @@ function initializeEventListeners() {
             console.error("Erro ao salvar tarefa:", error);
             alert('Falha ao salvar a tarefa.');
         }
-    });
+    };
+    
+    // Lógica de verificação da cor
+    const originalTask = state.editingTaskId ? state.tasks.find(t => t.id === state.editingTaskId) : null;
+    const projectHasChangedColor = originalTask && originalTask.project === projectName && originalTask.projectColor !== newColor;
+    
+    if (projectHasChangedColor) {
+        showConfirmModal(
+            'Atualizar Cor do Projeto',
+            `Você alterou a cor do projeto "${projectName}". Deseja aplicar esta nova cor para TODAS as tarefas deste projeto?`,
+            async () => { // Ação se o usuário clicar "Confirmar"
+                try {
+                    await api.updateProjectColor(projectName, newColor);
+                } catch (error) {
+                    console.error("Erro ao atualizar a cor global do projeto:", error);
+                }
+                await saveTaskAction(); // Salva a tarefa atual independentemente do resultado
+            },
+            async () => { // Ação se o usuário clicar "Cancelar" (neste caso, o botão de cancelar do modal)
+                await saveTaskAction(); // Apenas salva a tarefa atual com a nova cor
+            }
+        );
+        // Modifica o texto dos botões para ficar mais claro
+        document.getElementById('confirmDeleteBtn').textContent = 'Sim, em todas';
+        document.getElementById('cancelDeleteBtn').textContent = 'Não, só nesta';
+    } else {
+        await saveTaskAction(); // Se não houver mudança de cor, apenas salva a tarefa
+    }
+});
     
     // Modal de Histórico
     document.getElementById('closeHistoryBtn').addEventListener('click', () => historyModal.classList.add('hidden'));
     document.getElementById('cancelDeleteBtn').addEventListener('click', () => deleteConfirmModal.classList.add('hidden'));
+
+    // Adiciona o listener para o seletor de status (usando delegação de evento)
+    historyModal.addEventListener('change', async (e) => {
+        if (e.target.id === 'modal-status-selector') {
+            const newStatus = e.target.value;
+            const taskId = state.lastInteractedTaskId;
+            if (!taskId) return;
+
+            try {
+                await api.updateTask(taskId, { status: newStatus });
+                // O SignalR cuidará de atualizar a UI para todos.
+            } catch (error) {
+                console.error("Falha ao atualizar status pelo modal:", error);
+                alert('Não foi possível alterar o status.');
+            }
+        }
+    });
     
     // ---- BOTÃO DE EDITAR TAREFA (CORRIGIDO) ----
     document.getElementById('editTaskBtn').addEventListener('click', () => {
@@ -276,23 +328,41 @@ function initializeDragAndDrop() {
     });
 }
 
-function showConfirmModal(title, message, onConfirm) {
+function showConfirmModal(title, message, onConfirm, onCancel = null) {
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const confirmTitle = deleteConfirmModal.querySelector('h2');
     const confirmMessage = deleteConfirmModal.querySelector('p');
     const confirmButton = document.getElementById('confirmDeleteBtn');
+    const cancelButton = document.getElementById('cancelDeleteBtn');
 
-    // Atualiza o texto do modal
+    // Restaura o texto padrão dos botões
+    confirmButton.textContent = 'Excluir';
+    cancelButton.textContent = 'Cancelar';
+
     confirmTitle.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-red-500"></i> ${title}`;
     confirmMessage.textContent = message;
     lucide.createIcons();
 
-    // Define a ação que o botão "Confirmar" fará
     confirmButton.onclick = () => {
         onConfirm();
-        deleteConfirmModal.classList.add('hidden');
     };
 
-    // Exibe o modal
+    // Ação do botão de cancelar
+    cancelButton.onclick = () => {
+        if (onCancel) {
+            onCancel();
+        }
+        deleteConfirmModal.classList.add('hidden');
+    };
+    
     deleteConfirmModal.classList.remove('hidden');
+}
+
+export async function updateProjectColor(projectName, newColor) {
+    const response = await fetch(`/api/updateProjectColor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectName, newColor })
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar a cor do projeto.');
 }
