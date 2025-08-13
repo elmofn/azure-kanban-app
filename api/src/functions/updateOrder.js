@@ -26,16 +26,27 @@ app.http('updateOrder', {
             const operations = orderedTasks.map(task => ({
                 operationType: "Patch",
                 id: task.id,
-                partitionKey: task.id,
+                partitionKey: task.id, // A chave de partição é o próprio ID da tarefa
                 resourceBody: {
                     operations: [{ op: "set", path: "/order", value: task.order }]
                 }
             }));
 
-            await container.items.bulk(operations);
+            // --- LÓGICA CORRIGIDA ABAIXO ---
+
+            // Em vez de enviar tudo de uma vez, processamos em lotes de 100.
+            while (operations.length > 0) {
+                // Pega os primeiros 100 itens da lista (ou menos, se restarem menos de 100)
+                const batch = operations.splice(0, 100);
+                
+                // Envia apenas o lote para o Cosmos DB
+                await container.items.bulk(batch);
+                
+                context.log(`Processado um lote de ${batch.length} operações de reordenação.`);
+            }
 
             context.extraOutputs.set(signalROutput, {
-                target: 'tasksUpdated',
+                target: 'tasksReordered',
                 arguments: []
             });
 

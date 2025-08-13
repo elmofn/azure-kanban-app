@@ -473,7 +473,7 @@
 
                     lucide.createIcons(); 
 
-                } catch (error) { // CORREÇÃO: Adicionadas as chavetas {} em volta do bloco catch
+                } catch (error) {
                     console.error("Falha ao buscar tarefas:", error);
                     loaderContainerEl.innerHTML = '<p class="text-red-500">Falha ao carregar as tarefas.</p>';
                 } finally {
@@ -483,36 +483,57 @@
 
             function connectToSignalR() {
                 const connection = new signalR.HubConnectionBuilder()
-                    .withUrl('/api') // A SWA CLI/Azure irá encaminhar isto para a função 'negotiate'
+                    .withUrl('/api')
                     .build();
 
-            connection.on('tasksUpdated', () => {
-                console.log('Notificação recebida: atualizando tarefas.');
-                const persistentHighlightId = lastInteractedTaskId;
-                // Verifica se o modal de informações está visível ANTES de buscar os novos dados
-                const isHistoryModalOpen = !document.getElementById('taskHistoryModal').classList.contains('hidden');
+                // Ouve o evento de uma nova tarefa criada
+                connection.on('taskCreated', (newTask) => {
+                    console.log('SignalR: Nova tarefa recebida!', newTask);
+                    tasks.push(newTask); // Adiciona a nova tarefa à nossa lista local
+                    updateActiveView();  // Redesenha a tela com a lista local atualizada
+                });
 
-                fetchAndRenderTasks().then(() => {
-                    // Após a UI principal ser redesenhada...
+                connection.on('tasksReordered', () => {
+                    console.log('SignalR: Ordem das tarefas foi alterada, buscando a nova lista.');
+                    // Para reordenação em massa, uma nova busca é a abordagem mais simples e segura.
+                    fetchAndRenderTasks(); 
+                });
 
-                    // Se o modal estava aberto, redesenha o seu conteúdo com os dados atualizados
-                    if (isHistoryModalOpen && persistentHighlightId) {
-                        renderTaskHistory(persistentHighlightId);
+                // Ouve o evento de uma tarefa atualizada
+                connection.on('taskUpdated', (updatedTask) => {
+                    console.log('SignalR: Tarefa atualizada!', updatedTask);
+
+                    // 1. Atualiza a lista de tarefas nos bastidores (como antes)
+                    const index = tasks.findIndex(t => t.id === updatedTask.id);
+                    if (index !== -1) {
+                        tasks[index] = updatedTask;
                     }
 
-                    // A lógica de destaque continua a funcionar como antes
-                    if (persistentHighlightId && currentView === 'list') {
-                        lastInteractedTaskId = persistentHighlightId;
-                        highlightTask(persistentHighlightId, false);
-                    }
-                    if (taskToHighlightTemporarily) {
-                        highlightTask(taskToHighlightTemporarily, true);
-                        taskToHighlightTemporarily = null;
+                    // 2. Redesenha a vista principal (Kanban/Lista)
+                    updateActiveView();
+
+                    // --- 3. LÓGICA ADICIONADA: Verifica e redesenha o modal ---
+                    
+                    // Verifica se o modal de informações da tarefa está visível
+                    const isHistoryModalOpen = !document.getElementById('taskHistoryModal').classList.contains('hidden');
+
+                    // Se o modal estiver aberto E for da tarefa que acabou de ser atualizada...
+                    if (isHistoryModalOpen && updatedTask.id === lastInteractedTaskId) {
+                        console.log('SignalR: Redesenhando o modal da tarefa aberta.');
+                        // ...chama a função para redesenhar o conteúdo do modal com os novos dados.
+                        renderTaskHistory(updatedTask.id);
                     }
                 });
-            });
 
-                // Tenta reconectar-se automaticamente em caso de perda de conexão
+                // Ouve o evento de uma tarefa excluída
+                connection.on('taskDeleted', (taskId) => {
+                    console.log('SignalR: Excluindo tarefa com ID:', taskId);
+                    // Filtra a lista local, mantendo apenas as tarefas com ID diferente
+                    tasks = tasks.filter(t => t.id !== taskId);
+                    updateActiveView(); // Redesenha a tela
+                });
+
+                // Lógica para reconexão (continua igual)
                 async function start() {
                     try {
                         await connection.start();
@@ -523,9 +544,7 @@
                     }
                 };
 
-                connection.onclose(async () => {
-                    await start();
-                });
+                connection.onclose(start);
 
                 start();
             }
@@ -1521,18 +1540,17 @@
                             const newStatus = evt.to.dataset.columnId;
                             const task = tasks.find(t => t.id === taskId);
 
+                            // Verificação de data para mover para colunas ativas (continua igual)
                             const activeColumns = ['stopped', 'inprogress', 'homologation'];
-
-                            // VERIFICAÇÃO: Se a tarefa está a entrar numa coluna ativa e não tem data
                             if (activeColumns.includes(newStatus) && !task.dueDate) {
-                                // Cancela o movimento visual e abre o modal
                                 evt.from.appendChild(evt.item); 
                                 openDueDateModal(task, newStatus);
-                                return; // Para a execução aqui
+                                return;
                             }
 
-                            taskToHighlightTemporarily = taskId;
+                            // --- LÓGICA CORRIGIDA ABAIXO ---
 
+                            // Se a tarefa mudou de coluna, primeiro atualizamos seu status
                             if (task && task.status !== newStatus) {
                                 try {
                                     await fetch(`/api/updateTask/${taskId}`, {
@@ -1540,20 +1558,39 @@
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ status: newStatus })
                                     });
-                                } catch (error) { console.error("Erro ao mover tarefa:", error); }
-                            } else {
-                                try {
-                                    const allTaskElements = Array.from(document.querySelectorAll('.task-card'));
-                                    const orderedTasksPayload = allTaskElements.map((el, index) => ({
-                                        id: el.dataset.taskId,
-                                        order: index
-                                    }));
-                                    await fetch(`/api/updateOrder`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(orderedTasksPayload)
+                                    // Não precisa de mais nada aqui, o SignalR 'taskUpdated' vai atualizar a UI.
+                                } catch (error) {
+                                    console.error("Erro ao mover tarefa:", error);
+                                    // Mesmo com erro, continuamos para a reordenação para não deixar a UI inconsistente
+                                }
+                            }
+
+                            // Após qualquer movimento (mudar de coluna OU reordenar na mesma coluna),
+                            // vamos recalcular a ordem de TODAS as tarefas e enviar para o backend.
+                            try {
+                                const orderedTasksPayload = [];
+                                // Itera sobre cada coluna do Kanban
+                                document.querySelectorAll('.kanban-column .task-list').forEach(column => {
+                                    // Itera sobre cada card de tarefa dentro da coluna, na sua ordem visual atual
+                                    Array.from(column.children).forEach((taskCard, index) => {
+                                        orderedTasksPayload.push({
+                                            id: taskCard.dataset.taskId,
+                                            order: index // A ordem é o índice do card dentro da sua coluna
+                                        });
                                     });
-                                } catch (error) { console.error("Erro ao reordenar tarefas:", error); }
+                                });
+
+                                // Envia a lista completa e reordenada para a API
+                                await fetch(`/api/updateOrder`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(orderedTasksPayload)
+                                });
+                                // O backend enviará 'tasksReordered', e o frontend buscará a lista atualizada,
+                                // garantindo consistência para todos os usuários.
+
+                            } catch (error) {
+                                console.error("Erro ao reordenar tarefas:", error);
                             }
                         }
                     });

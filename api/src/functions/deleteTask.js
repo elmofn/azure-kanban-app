@@ -25,8 +25,8 @@ app.http('deleteTask', {
         try {
             await container.item(taskId, taskId).delete();
             context.extraOutputs.set(signalROutput, {
-                target: 'tasksUpdated',
-                arguments: []
+                target: 'taskDeleted',      // Evento específico
+                arguments: [taskId]         // Envia o ID da tarefa removida
             });
             return { status: 204 };
         } catch (error) {

@@ -61,8 +61,8 @@ app.http('addComment', {
             const { resource: replaced } = await container.item(taskId, taskId).replace(existingTask);
 
             context.extraOutputs.set(signalROutput, {
-                target: 'tasksUpdated',
-                arguments: []
+                target: 'taskUpdated',      // Evento específico
+                arguments: [replaced]       // 'replaced' é o objeto da tarefa atualizada
             });
 
             return { jsonBody: replaced };

@@ -70,7 +70,10 @@ app.http('createTask', {
             // 2. Cria a nova tarefa com o ID único garantido.
             await container.items.create(newTask);
 
-            context.extraOutputs.set(signalROutput, { target: 'tasksUpdated', arguments: [] });
+            context.extraOutputs.set(signalROutput, { 
+                target: 'taskCreated',      // Evento específico
+                arguments: [newTask]        // Envia a nova tarefa como argumento
+            });
             return { jsonBody: newTask };
         } catch (error) {
             context.log(`Erro ao criar tarefa: ${error.message}`);
