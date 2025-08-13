@@ -63,3 +63,13 @@ export async function updateOrder(orderedTasksPayload) {
     });
     if (!response.ok) throw new Error('Falha ao reordenar tarefas.');
 }
+
+export async function deleteComment(taskId, commentIndex) {
+    const response = await fetch(`/api/deleteComment/${taskId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index: commentIndex })
+    });
+    if (!response.ok) throw new Error('Falha ao excluir o comentário.');
+    return await response.json();
+}

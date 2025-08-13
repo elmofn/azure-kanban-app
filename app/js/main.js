@@ -42,7 +42,6 @@ function initializeEventListeners() {
     const taskForm = document.getElementById('taskForm');
     const historyModal = document.getElementById('taskHistoryModal');
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-    const dueDateModal = document.getElementById('dueDateModal');
 
     // Lógica do Tema (Dark/Light)
     const themeToggle = document.getElementById('theme-toggle');
@@ -89,7 +88,7 @@ function initializeEventListeners() {
         }
     });
 
-    // Modal de Tarefa
+    // Modal de Tarefa (Adicionar/Editar)
     document.getElementById('addTaskBtn').addEventListener('click', () => {
         state.editingTaskId = null;
         document.getElementById('modalTitle').textContent = 'Nova Tarefa';
@@ -132,10 +131,35 @@ function initializeEventListeners() {
         }
     });
     
-    // Modais de Histórico, Exclusão e Data
+    // Modal de Histórico
     document.getElementById('closeHistoryBtn').addEventListener('click', () => historyModal.classList.add('hidden'));
     document.getElementById('cancelDeleteBtn').addEventListener('click', () => deleteConfirmModal.classList.add('hidden'));
-    document.getElementById('cancelDueDateBtn').addEventListener('click', () => dueDateModal.classList.add('hidden'));
+    
+    // ---- BOTÃO DE EDITAR TAREFA (CORRIGIDO) ----
+    document.getElementById('editTaskBtn').addEventListener('click', () => {
+        const taskId = state.lastInteractedTaskId;
+        const taskToEdit = state.tasks.find(t => t.id === taskId);
+        if (!taskToEdit) return;
+
+        state.editingTaskId = taskId;
+
+        document.getElementById('modalTitle').textContent = 'Editar Tarefa';
+        document.getElementById('taskTitle').value = taskToEdit.title || '';
+        document.getElementById('taskDescription').value = taskToEdit.description || '';
+        document.getElementById('taskAzureLink').value = taskToEdit.azureLink || '';
+        document.getElementById('taskProject').value = taskToEdit.project || '';
+        document.getElementById('taskProjectColor').value = taskToEdit.projectColor || '#526D82';
+        document.getElementById('color-picker-button').style.backgroundColor = taskToEdit.projectColor || '#526D82';
+        document.getElementById('taskDueDate').value = taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : '';
+        document.getElementById('taskPriority').value = taskToEdit.priority || 'Média';
+
+        ui.setupTagInput(taskToEdit.responsible || []);
+        ui.setupProjectSuggestions();
+        ui.setupCustomColorPicker();
+        
+        historyModal.classList.add('hidden');
+        taskModal.classList.remove('hidden');
+    });
 
     document.getElementById('add-comment-btn').addEventListener('click', async () => {
         const commentInput = document.getElementById('comment-input');
@@ -156,6 +180,7 @@ function initializeEventListeners() {
         const deleteBtn = target.closest('.delete-btn');
         const approveBtn = target.closest('.approve-btn');
         const restoreBtn = target.closest('.restore-btn');
+        const deleteCommentBtn = target.closest('.delete-comment-btn'); // <-- NOVO
 
         if (infoBtn) {
             state.lastInteractedTaskId = infoBtn.dataset.taskId;
@@ -184,6 +209,19 @@ function initializeEventListeners() {
         if(restoreBtn) {
             try { await api.updateTask(restoreBtn.dataset.taskId, { status: 'todo' }); } 
             catch (error) { console.error("Erro ao restaurar tarefa:", error); }
+        }
+
+        // ---- LÓGICA PARA EXCLUIR COMENTÁRIO (CORRIGIDO) ----
+        if(deleteCommentBtn) {
+            const taskId = deleteCommentBtn.dataset.taskId;
+            const commentIndex = parseInt(deleteCommentBtn.dataset.commentIndex, 10);
+            if(confirm('Tem certeza que deseja excluir este comentário?')) {
+                try {
+                    await api.deleteComment(taskId, commentIndex);
+                } catch (error) {
+                    console.error("Erro ao excluir comentário:", error);
+                }
+            }
         }
     });
 
