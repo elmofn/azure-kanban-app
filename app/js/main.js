@@ -180,7 +180,7 @@ function initializeEventListeners() {
         const deleteBtn = target.closest('.delete-btn');
         const approveBtn = target.closest('.approve-btn');
         const restoreBtn = target.closest('.restore-btn');
-        const deleteCommentBtn = target.closest('.delete-comment-btn'); // <-- NOVO
+        const deleteCommentBtn = target.closest('.delete-comment-btn');
 
         if (infoBtn) {
             state.lastInteractedTaskId = infoBtn.dataset.taskId;
@@ -190,15 +190,18 @@ function initializeEventListeners() {
 
         if (deleteBtn) {
             const taskId = deleteBtn.dataset.taskId;
-            document.getElementById('confirmDeleteBtn').onclick = async () => {
-                try {
-                    await api.deleteTask(taskId);
-                    deleteConfirmModal.classList.add('hidden');
-                } catch (error) {
-                    console.error("Erro ao excluir:", error);
+            // --- LÓGICA ATUALIZADA ---
+            showConfirmModal(
+                'Excluir Tarefa',
+                'Você tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.',
+                async () => {
+                    try {
+                        await api.deleteTask(taskId);
+                    } catch (error) {
+                        console.error("Erro ao excluir tarefa:", error);
+                    }
                 }
-            };
-            deleteConfirmModal.classList.remove('hidden');
+            );
         }
         
         if (approveBtn) {
@@ -211,17 +214,21 @@ function initializeEventListeners() {
             catch (error) { console.error("Erro ao restaurar tarefa:", error); }
         }
 
-        // ---- LÓGICA PARA EXCLUIR COMENTÁRIO (CORRIGIDO) ----
         if(deleteCommentBtn) {
             const taskId = deleteCommentBtn.dataset.taskId;
             const commentIndex = parseInt(deleteCommentBtn.dataset.commentIndex, 10);
-            if(confirm('Tem certeza que deseja excluir este comentário?')) {
-                try {
-                    await api.deleteComment(taskId, commentIndex);
-                } catch (error) {
-                    console.error("Erro ao excluir comentário:", error);
+             // --- LÓGICA ATUALIZADA ---
+            showConfirmModal(
+                'Excluir Comentário',
+                'Você tem certeza que deseja excluir este comentário?',
+                async () => {
+                    try {
+                        await api.deleteComment(taskId, commentIndex);
+                    } catch (error) {
+                        console.error("Erro ao excluir comentário:", error);
+                    }
                 }
-            }
+            );
         }
     });
 
@@ -267,4 +274,25 @@ function initializeDragAndDrop() {
             }
         });
     });
+}
+
+function showConfirmModal(title, message, onConfirm) {
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    const confirmTitle = deleteConfirmModal.querySelector('h2');
+    const confirmMessage = deleteConfirmModal.querySelector('p');
+    const confirmButton = document.getElementById('confirmDeleteBtn');
+
+    // Atualiza o texto do modal
+    confirmTitle.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-red-500"></i> ${title}`;
+    confirmMessage.textContent = message;
+    lucide.createIcons();
+
+    // Define a ação que o botão "Confirmar" fará
+    confirmButton.onclick = () => {
+        onConfirm();
+        deleteConfirmModal.classList.add('hidden');
+    };
+
+    // Exibe o modal
+    deleteConfirmModal.classList.remove('hidden');
 }
