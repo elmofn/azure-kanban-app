@@ -10,14 +10,22 @@ app.http('getTasks', {
     methods: ['GET'],
     authLevel: 'anonymous',
     handler: async (request, context) => {
-        context.log('HTTP trigger function: Buscando tarefas.');
+        context.log('HTTP trigger function: Buscando tarefas ativas.');
 
         try {
-            // Garante que o banco de dados e o contêiner existam com a chave de partição correta
+            // Garante que o banco de dados e o contêiner existam
             await client.databases.createIfNotExists({ id: "TasksDB" });
             await database.containers.createIfNotExists({ id: "Tasks", partitionKey: { paths: ["/id"] } });
 
-            const { resources: items } = await container.items.query("SELECT * from c").fetchAll();
+            // Agora a consulta busca todas as tarefas ONDE o status for diferente de 'done'
+            const querySpec = {
+                query: "SELECT * FROM c WHERE c.status <> @status",
+                parameters: [
+                    { name: "@status", value: "done" }
+                ]
+            };
+
+            const { resources: items } = await container.items.query(querySpec).fetchAll();
             return { jsonBody: items };
         } catch (error) {
             context.log.error(`Erro ao buscar tarefas: ${error.message}`);
