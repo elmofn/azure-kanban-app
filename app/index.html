@@ -5,94 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SyncBoard</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/AoaA8WI.png">
-    <!-- Tailwind CSS para estilização -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Biblioteca de ícones Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- SortableJS para Drag and Drop -->   
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <!-- SignalR Client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
-    <!-- Fontes do Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/custom.css">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .sortable-ghost {
-            opacity: 0.4;
-            background-color: #526D82;
-        }
-        .sortable-drag {
-            opacity: 0.9 !important;
-        }
-        .description-truncate {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2; /* Limita o texto a 2 linhas */
-            -webkit-box-orient: vertical;
-        }
-        .task-card, .list-row {
-            transition: background-color 0.5s ease-in-out, border-color 0.5s ease-in-out;
-        }
-        .task-card.highlight {
-            background-color: #c8d3db !important; /* Um tom mais escuro que o fundo claro */
-            border-color: #526D82 !important;
-        }
-        .dark .task-card.highlight {
-            background-color: #3a4b5c !important; /* Um tom mais claro que o fundo escuro */
-            border-color: #9DB2BF !important;
-        }
-        tr.highlight {
-             background-color: #DDE6ED !important;
-        }
-         .dark tr.highlight {
-             background-color: #526D82 !important;
-        }
-        /* Animação para Novos Cartões */
-        @keyframes card-fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .task-card.new-card { /* Usamos uma classe específica para animar apenas os novos */
-            animation: card-fade-in 0.5s ease forwards;
-        }
-        .sortable-drag {
-            opacity: 0.9 !important;
-            /* Adicionamos a nossa nova animação aqui */
-            animation: wobble 0.6s infinite ease-in-out;
-            transform-origin: top center; /* Faz o cartão balançar a partir do topo */
-        }
-
-        /* Definição da animação de balanço */
-        @keyframes wobble {
-            0% { transform: rotate(0deg); }
-            33% { transform: rotate(2deg); }
-            66% { transform: rotate(-2deg); }
-            100% { transform: rotate(0deg); }
-        }
-        .task-overdue {
-            background-color: #FECACA !important; /* Tailwind's red-200 */
-            border-color: #F87171 !important; /* Tailwind's red-400 */
-        }
-        .dark .task-overdue {
-            background-color: #450A0A !important; /* Tailwind's red-950 */
-            border-color: #DC2626 !important; /* Tailwind's red-600 */
-        }
-
+        body { font-family: 'Inter', sans-serif; }
+        .sortable-ghost { opacity: 0.4; background-color: #526D82; }
+        .task-overdue { border-left: 3px solid #EF4444 !important; }
+        .dark .task-overdue { background-color: rgba(239, 68, 68, 0.05); }
         .responsible-tag {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            background-color: #526D82; /* custom-dark */
+            background-color: #526D82;
             color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
             font-size: 0.875rem;
-            font-weight: 600;
+            font-weight: 500;
         }
         .tag-remove-btn {
             display: flex;
@@ -108,88 +43,49 @@
         .tag-remove-btn:hover {
             background-color: rgba(0,0,0,0.4);
         }
-
-        /* Estilos para a Animação de Revelação do Conteúdo */
-        #main-content.content-hidden {
-            opacity: 0;
-            transform: translateY(-20px); /* Alterado para vir de cima */
-        }
-
-        #main-content.content-reveal {
-            animation: reveal-content 1.5s ease-out forwards;
-        }
-
-        @keyframes reveal-content {
-            from {
-                opacity: 0;
-                transform: translateY(-20px); /* Alterado para vir de cima */
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-            </style>
+    </style>
     <script>
-        tailwind.config = { 
+        tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         'custom-darkest': '#27374D',
+                        'custom-header': '#28344c',
                         'custom-dark': '#526D82',
                         'custom-medium': '#9DB2BF',
                         'custom-light': '#DDE6ED',
+                        'base-white': '#FFFFFF',
+                        'base-bg': '#F9FAFB',
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="antialiased bg-white dark:bg-custom-dark text-custom-darkest dark:text-custom-light">
-
+<body class="antialiased bg-base-bg dark:bg-custom-dark text-custom-darkest dark:text-custom-light">
     <div id="app">
-        <!-- Cabeçalho -->
-        <header class="p-4 z-10 bg-custom-darkest border-b border-custom-dark/50 sticky top-0">
-            <div class="container mx-auto flex justify-between items-center flex-wrap gap-4">
-                <!-- Grupo da Esquerda: Título e Filtro -->
+        <header class="p-4 z-10 bg-base-white/80 dark:bg-custom-header backdrop-blur-lg border-b border-custom-light dark:border-custom-darkest sticky top-0">
+            <div class="container mx-auto flex justify-between items-center">
                 <div class="flex items-center gap-6">
                     <div class="flex items-center gap-3">
                         <img src="https://i.imgur.com/AoaA8WI.png" alt="SyncBoard Logo" class="h-8 w-auto">
-                        <span class="text-3xl font-bold text-white">SyncBoard</span>
-                    </div>
-                    <!-- Seletor de Visualização -->
-                    <div id="view-switcher" class="flex items-center bg-custom-dark p-1 rounded-lg">
-                        <button data-view="list" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Lista</button>
-                        <button data-view="kanban" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Kanban</button>
-                        <button data-view="archived" class="view-btn px-3 py-1 text-sm font-semibold rounded-md transition-colors">Arquivados</button>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <label for="responsibleFilter" class="text-custom-medium" title="Filtrar por responsável">
-                            <i data-lucide="user-check" class="w-5 h-5"></i>
-                        </label>
-                        <select id="responsibleFilter" class="bg-custom-dark border-none text-custom-light rounded-md focus:ring-custom-medium focus:ring-2 focus:outline-none py-2 pl-3 pr-8">
-                            <option value="all">Todos</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <label for="projectFilter" class="text-custom-medium" title="Filtrar por projeto">
-                            <i data-lucide="folder-kanban" class="w-5 h-5"></i>
-                        </label>
-                        <select id="projectFilter" class="bg-custom-dark border-none text-custom-light rounded-md focus:ring-custom-medium focus:ring-2 focus:outline-none py-2 pl-3 pr-8">
-                            <option value="all">Todos</option>
-                        </select>
+                        <span class="text-2xl font-bold text-custom-darkest dark:text-white">SyncBoard</span>
                     </div>
                 </div>
-                
-                <!-- Grupo da Direita: Ações e Configurações -->
                 <div class="flex items-center gap-4">
-                    <button id="addTaskBtn" class="bg-custom-light hover:bg-custom-medium text-custom-darkest font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    <div id="view-switcher" class="flex items-center bg-custom-light dark:bg-custom-dark/50 p-1 rounded-lg text-sm">
+                        <button data-view="kanban" class="view-btn px-3 py-1 rounded-md transition-colors flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4"></i>Kanban</button>
+                        <button data-view="list" class="view-btn px-3 py-1 rounded-md transition-colors flex items-center gap-2"><i data-lucide="list" class="w-4 h-4"></i>Lista</button>
+                        <button data-view="archived" class="view-btn px-3 py-1 rounded-md transition-colors flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4"></i>Arquivados</button>
+                        <button data-view="users" id="user-management-btn" class="view-btn px-3 py-1 rounded-md transition-colors flex items-center gap-2 hidden"><i data-lucide="users" class="w-4 h-4"></i>Gerir Utilizadores</button>
+                    </div>
+                    <div class="h-6 w-px bg-custom-medium/50 dark:bg-custom-dark/50"></div>
+                    <button id="addTaskBtn" class="bg-custom-darkest hover:bg-opacity-90 dark:bg-custom-light dark:text-custom-darkest dark:hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
                         <span>Nova Tarefa</span>
                     </button>
-                    <button id="theme-toggle" class="p-2 rounded-lg text-custom-medium hover:bg-custom-dark/50 transition-colors">
+                    <button id="theme-toggle" class="p-2 rounded-lg text-custom-dark dark:text-custom-medium hover:bg-custom-light dark:hover:bg-custom-dark/50 transition-colors">
                         <i id="theme-icon-light" data-lucide="sun" class="w-5 h-5 hidden"></i>
                         <i id="theme-icon-dark" data-lucide="moon" class="w-5 h-5"></i>
                     </button>
@@ -197,81 +93,81 @@
             </div>
         </header>
 
-        <!-- Conteúdo Principal -->
-         <!-- Indicador de Carregamento -->
-           <div id="loader-container" class="fixed inset-0 z-50 flex justify-center items-center bg-white dark:bg-custom-dark">
-                <video id="loader-video" autoplay muted loop playsinline class="absolute top-0 left-0 w-full h-full object-cover">
-                    <source src="https://syncboard.blob.core.windows.net/geral/Apresentação1.mp4" type="video/mp4">
-                    O seu navegador não suporta vídeos.
-                </video>
+        <div class="container mx-auto px-4 lg:px-6 pt-4 flex items-center gap-4">
+            <div id="project-filter-dropdown" class="relative w-56">
+                <button type="button" id="project-filter-button" class="dropdown-button w-full flex items-center justify-between bg-base-white dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-lg text-sm font-semibold py-2 px-3 focus:ring-2 focus:ring-custom-dark focus:outline-none">
+                    <span id="project-filter-label" class="truncate">Todos os Projetos</span>
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-custom-medium"></i>
+                </button>
+                <div id="project-filter-panel" class="dropdown-panel hidden absolute z-10 mt-1 w-full bg-base-white dark:bg-custom-darkest rounded-lg shadow-lg border border-custom-medium/50 dark:border-custom-dark/50 max-h-60 overflow-y-auto"></div>
             </div>
-        <main id="main-content" class="container mx-auto p-4 lg:p-6">
-            <!-- Visualização Kanban -->
+            <div id="responsible-filter-dropdown" class="relative w-56">
+                <button type="button" id="responsible-filter-button" class="dropdown-button w-full flex items-center justify-between bg-base-white dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-lg text-sm font-semibold py-2 px-3 focus:ring-2 focus:ring-custom-dark focus:outline-none">
+                    <span id="responsible-filter-label" class="truncate">Todos os Responsáveis</span>
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-custom-medium"></i>
+                </button>
+                <div id="responsible-filter-panel" class="dropdown-panel hidden absolute z-10 mt-1 w-full bg-base-white dark:bg-custom-darkest rounded-lg shadow-lg border border-custom-medium/50 dark:border-custom-dark/50 max-h-60 overflow-y-auto"></div>
+            </div>
+        </div>
+        
+        <div id="loader-container" class="fixed inset-0 z-50 flex justify-center items-center bg-base-white dark:bg-custom-dark">
+            <video id="loader-video" autoplay muted loop playsinline class="absolute top-0 left-0 w-full h-full object-cover">
+                <source src="https://syncboard.blob.core.windows.net/geral/Apresentação1.mp4" type="video/mp4">
+            </video>
+        </div>
+        <main id="main-content" class="container mx-auto px-4 lg:px-6 pt-4 opacity-0">
             <div id="kanbanView" class="hidden">
                 <div id="board-columns" class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <!-- Coluna Fila -->
-                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
-                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Fila</h2>
+                    <div class="kanban-column bg-custom-light/50 dark:bg-custom-darkest/40 rounded-lg p-4 flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light flex justify-between items-center"></h2>
                         <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="todo"></div>
                     </div>
-                    <!-- Coluna Parado -->
-                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
-                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Parado</h2>
+                    <div class="kanban-column bg-custom-light/50 dark:bg-custom-darkest/40 rounded-lg p-4 flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light flex justify-between items-center"></h2>
                         <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="stopped"></div>
                     </div>
-                    <!-- Coluna Em Andamento -->
-                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
-                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Em Andamento</h2>
+                    <div class="kanban-column bg-custom-light/50 dark:bg-custom-darkest/40 rounded-lg p-4 flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light flex justify-between items-center"></h2>
                         <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="inprogress"></div>
                     </div>
-                    <!-- Coluna Em Homologação -->
-                    <div class="kanban-column bg-custom-light dark:bg-custom-darkest/40 p-4 rounded-lg flex flex-col">
-                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light">Em Homologação</h2>
+                    <div class="kanban-column bg-custom-light/50 dark:bg-custom-darkest/40 rounded-lg p-4 flex flex-col">
+                        <h2 class="font-bold text-lg mb-4 text-custom-darkest dark:text-custom-light flex justify-between items-center"></h2>
                         <div class="task-list space-y-4 min-h-[100px] flex-grow" data-column-id="homologation"></div>
                     </div>
                 </div>
             </div>
-
-            <!-- Visualização em Lista -->
-            <div id="listView" class="hidden">
-                <!-- O conteúdo da lista será gerado aqui -->
-            </div>
-
-            <!-- Vista de Tarefas Arquivadas -->
-            <div id="archivedView" class="hidden">
-                <!-- O conteúdo da lista de arquivados será gerado aqui -->
-            </div>
+            <div id="listView" class="hidden"></div>
+            <div id="archivedView" class="hidden"></div>
+            <div id="userManagementView" class="hidden"></div>
         </main>
     </div>
 
-    <!-- Modal para Adicionar/Editar Tarefa -->
-    <div id="taskModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl w-full max-w-lg">
-            <form id="taskForm">
-                <div class="p-6 border-b border-custom-medium/30 dark:border-custom-dark/50">
-                    <h2 id="modalTitle" class="text-2xl font-bold text-custom-darkest dark:text-custom-light">Nova Tarefa</h2>
+    <div id="taskModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-base-white dark:bg-custom-darkest border border-custom-light dark:border-custom-dark/50 rounded-xl shadow-2xl w-full max-w-lg modal-content flex flex-col max-h-[90vh]">
+            <form id="taskForm" class="flex flex-col flex-grow min-h-0">
+                <div class="p-6 border-b border-custom-light dark:border-custom-dark flex-shrink-0">
+                    <h2 id="modalTitle" class="text-xl font-bold text-custom-darkest dark:text-custom-light">Nova Tarefa</h2>
+                    <p class="text-sm text-custom-dark dark:text-custom-medium">Preencha os detalhes abaixo para organizar seu fluxo.</p>
                 </div>
-                <div class="p-6 space-y-4">
+                <div class="p-6 space-y-4 overflow-y-auto flex-grow">
                     <div>
                         <label for="taskTitle" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Título</label>
-                        <input type="text" id="taskTitle" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
+                        <input type="text" id="taskTitle" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" required>
                     </div>
                     <div>
                         <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
-                        <textarea id="taskDescription" rows="3" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required></textarea>
+                        <textarea id="taskDescription" rows="3" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" required></textarea>
                     </div>
-                    <div class="mb-4">
+                    <div class="relative">
                         <label for="taskResponsible" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Responsável(eis)</label>
-                        <div id="responsible-input-container" class="relative flex items-center flex-wrap gap-2 p-2 shadow-sm border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full min-h-[46px]">
-                            <!-- As tags dos responsáveis serão inseridas aqui pelo JavaScript -->
+                        <div id="responsible-input-container" class="flex items-center flex-wrap gap-2 p-2 shadow-sm border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full min-h-[42px]">
                             <input type="text" id="taskResponsible" class="flex-grow bg-transparent focus:outline-none text-custom-darkest dark:text-custom-light" placeholder="Adicionar responsável..." autocomplete="off">
                         </div>
                         <div id="responsible-suggestions" class="absolute z-20 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                     </div>
-                    <!-- Campo de Prioridade -->
-                    <div class="mb-4">
+                    <div>
                         <label for="taskPriority" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Prioridade</label>
-                        <select id="taskPriority" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
+                        <select id="taskPriority" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark">
                             <option value="Baixa">Baixa</option>
                             <option value="Média" selected>Média</option>
                             <option value="Alta">Alta</option>
@@ -281,7 +177,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="relative">
                             <label for="taskProject" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Projeto</label>
-                            <input type="text" id="taskProject" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" placeholder="Selecione ou crie um novo" autocomplete="off">
+                            <input type="text" id="taskProject" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" placeholder="Selecione ou crie um novo" autocomplete="off">
                             <div id="project-suggestions" class="absolute z-10 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                         </div>
                         <div class="relative">
@@ -289,82 +185,92 @@
                                 <label for="color-picker-button" class="block text-sm font-bold text-custom-dark dark:text-custom-medium">Cor</label>
                                 <button type="button" id="native-color-picker-trigger" title="Escolher cor específica"><i data-lucide="palette" class="w-5 h-5 text-custom-dark dark:text-custom-medium hover:text-custom-darkest dark:hover:text-white transition-colors"></i></button>
                             </div>
-                            <button type="button" id="color-picker-button" class="w-full h-[46px] rounded-lg border border-custom-medium dark:border-custom-dark"></button>
+                            <button type="button" id="color-picker-button" class="w-full h-[42px] rounded-lg border border-custom-medium dark:border-custom-dark"></button>
                             <input type="color" id="taskProjectColor" value="#526D82" class="absolute top-0 left-0 w-0 h-0 opacity-0">
                             <div id="color-palette" class="absolute z-30 mt-1 w-full p-2 bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md shadow-lg hidden grid grid-cols-6 gap-2"></div>
                         </div>
                     </div>
                     <div>
-                        <label for="taskDueDate" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Data Prevista (Opcional)</label>
-                        <input type="date" id="taskDueDate" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="taskDueDate" class="block text-sm font-bold text-custom-dark dark:text-custom-medium">Data Prevista</label>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="no-due-date-checkbox" class="h-4 w-4 rounded border-gray-300 text-custom-dark focus:ring-custom-dark">
+                                <label for="no-due-date-checkbox" class="text-sm text-custom-dark dark:text-custom-medium">Sem prazo definido</label>
+                            </div>
+                        </div>
+                        <input type="date" id="taskDueDate" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark transition-opacity">
                     </div>
                     <div>
                         <label for="taskAzureLink" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Link Azure DevOps (Opcional)</label>
-                        <input type="url" id="taskAzureLink" placeholder="https://dev.azure.com/..." class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light">
+                        <input type="url" id="taskAzureLink" placeholder="https://dev.azure.com/..." class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Anexos</label>
+                        <div id="attachment-list" class="space-y-2 mb-2"></div>
+                        <label for="task-attachment-input" class="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-custom-medium dark:border-custom-dark hover:border-custom-dark dark:hover:border-custom-medium rounded-lg cursor-pointer transition-colors">
+                            <i data-lucide="paperclip" class="w-4 h-4"></i>
+                            <span class="text-sm font-semibold">Adicionar arquivo</span>
+                        </label>
+                        <input type="file" id="task-attachment-input" multiple class="hidden">
                     </div>
                 </div>
-                <div class="p-4 bg-custom-light/50 dark:bg-custom-dark/20 flex items-center justify-end gap-4">
-                    <button type="button" id="cancelBtn" class="bg-custom-medium hover:bg-custom-dark text-custom-darkest hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
-                    <button type="submit" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold py-2 px-4 rounded-lg transition-colors">Salvar</button>
+                <div class="p-4 bg-custom-light/50 dark:bg-custom-dark/20 flex items-center justify-end gap-4 flex-shrink-0">
+                    <button type="button" id="cancelBtn" class="bg-transparent hover:bg-custom-medium/50 text-custom-darkest dark:text-white dark:hover:bg-custom-dark font-bold py-2 px-4 rounded-lg transition-colors text-sm">Cancelar</button>
+                    <button type="submit" class="bg-custom-darkest hover:bg-opacity-90 dark:bg-custom-light dark:text-custom-darkest dark:hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal para Histórico da Tarefa -->
-    <div id="taskHistoryModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <!-- NOVO LAYOUT DO MODAL -->
-        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-6 w-full max-w-4xl mx-4 flex flex-col max-h-[90vh]">
-            <!-- Cabeçalho do Modal -->
-            <div class="flex justify-between items-center mb-4 pb-4 border-b border-custom-medium/30 dark:border-custom-dark/50">
+    <div id="taskHistoryModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-base-white dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-6 w-full max-w-4xl mx-4 flex flex-col max-h-[90vh] modal-content">
+            <div class="flex justify-between items-start mb-4 pb-4 border-b border-custom-light dark:border-custom-dark">
                 <div>
+                    <p id="modal-info-project" class="text-sm font-semibold mb-1"></p>
                     <h2 id="modal-info-title" class="text-2xl font-bold text-custom-darkest dark:text-custom-light"></h2>
-                    <p id="modal-info-project" class="text-sm font-semibold"></p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="editTaskBtn" class="p-2 rounded-full text-custom-darkest dark:text-custom-light hover:bg-custom-medium/50 dark:hover:bg-custom-dark/50" title="Editar Tarefa">
-                        <i data-lucide="file-pen-line" class="w-6 h-6 pointer-events-none"></i>
+                    <button id="editTaskBtn" class="p-2 rounded-lg text-custom-dark dark:text-custom-light hover:bg-custom-light dark:hover:bg-custom-dark" title="Editar Tarefa">
+                        <i data-lucide="file-pen-line" class="w-5 h-5 pointer-events-none"></i>
                     </button>
-                    <button id="closeHistoryBtn" class="p-2 rounded-full text-custom-darkest dark:text-custom-light hover:bg-custom-medium/50 dark:hover:bg-custom-dark/50">
-                        <i data-lucide="x" class="w-6 h-6"></i>
+                    <button id="closeHistoryBtn" class="p-2 rounded-lg text-custom-dark dark:text-custom-light hover:bg-custom-light dark:hover:bg-custom-dark">
+                        <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>
-
-            <!-- Corpo do Modal com Duas Colunas -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 overflow-y-auto">
-                <!-- Coluna da Esquerda: Detalhes -->
                 <div class="md:col-span-2 space-y-4">
                     <div>
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Descrição</h3>
                         <p id="modal-info-description" class="text-custom-darkest dark:text-custom-light whitespace-pre-wrap"></p>
                     </div>
-                    <div class="border-t border-custom-medium/30 dark:border-custom-dark/50 pt-4">
-                        <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Responsáveis</h3>
-                        <p id="modal-info-responsible" class="text-custom-darkest dark:text-custom-light"></p>
+                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-custom-light dark:border-custom-dark">
+                        <div>
+                            <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Responsáveis</h3>
+                            <p id="modal-info-responsible" class="text-custom-darkest dark:text-custom-light"></p>
+                        </div>
+                        <div id="modal-info-dueDate-container" class="hidden">
+                            <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Data Prevista</h3>
+                            <p id="modal-info-dueDate" class="text-custom-darkest dark:text-custom-light"></p>
+                        </div>
                     </div>
-                    <div id="modal-info-dueDate-container" class="hidden border-t border-custom-medium/30 dark:border-custom-dark/50 pt-4">
-                        <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Data Prevista</h3>
-                        <p id="modal-info-dueDate" class="text-custom-darkest dark:text-custom-light"></p>
-                    </div>
-                    <div id="modal-info-azure-link-container" class="hidden border-t border-custom-medium/30 dark:border-custom-dark/50 pt-4">
+                     <div id="modal-info-azure-link-container" class="hidden pt-4 border-t border-custom-light dark:border-custom-dark">
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Link Azure DevOps</h3>
                         <a id="modal-info-azure-link" href="#" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline break-all"></a>
                     </div>
-                </div>
-
-                <!-- Coluna da Direita: Atividade e Comentários -->
-                <div class="md:col-span-1 border-l border-custom-medium/30 dark:border-custom-dark/50 pl-6 flex flex-col">
-                    <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-2">Atividade</h3>
-                    <div id="activity-feed" class="space-y-3 flex-grow overflow-y-auto pr-2">
-                        <!-- O histórico e os comentários serão inseridos aqui -->
+                    <div id="modal-info-attachments-container" class="hidden pt-4 border-t border-custom-light dark:border-custom-dark">
+                        <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-2">Anexos</h3>
+                        <div id="modal-info-attachments" class="space-y-2"></div>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-custom-medium/30 dark:border-custom-dark/50">
-                        <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-2">Adicionar Comentário</h3>
-                        <textarea id="comment-input" class="w-full shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg py-2 px-3 text-custom-darkest dark:text-custom-light" placeholder="Escreva um comentário..." rows="2"></textarea>
+                </div>
+                <div class="md:col-span-1 border-l-0 md:border-l border-custom-light dark:border-custom-dark md:pl-6 flex flex-col">
+                    <h3 class="font-bold text-lg text-custom-darkest dark:text-custom-light mb-4">Atividade</h3>
+                    <div id="activity-feed" class="space-y-4 flex-grow overflow-y-auto pr-2 -mr-2"></div>
+                    <div class="mt-4 pt-4 border-t border-custom-light dark:border-custom-dark">
+                        <textarea id="comment-input" class="w-full shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" placeholder="Escreva um comentário..." rows="2"></textarea>
                         <div class="flex justify-end mt-2">
-                            <button id="add-comment-btn" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold p-2 rounded-lg transition-colors flex items-center gap-2">
-                                <i data-lucide="send" class="w-5 h-5"></i>
+                            <button id="add-comment-btn" class="bg-custom-darkest hover:bg-opacity-90 text-white font-bold p-2 rounded-lg transition-colors flex items-center gap-2 text-sm">
+                                <i data-lucide="send" class="w-4 h-4"></i>
                                 <span>Enviar</span>
                             </button>
                         </div>
@@ -374,45 +280,24 @@
         </div>
     </div>
     
-    <!-- Modal para Confirmação de Exclusão -->
-    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-sm mx-4">
-            <h2 class="text-2xl font-bold text-red-600 dark:text-red-500 mb-4 flex items-center gap-2">
-                <i data-lucide="trash-2" class="w-6 h-6"></i>
-                Confirmar Exclusão
-            </h2>
-            <p class="text-custom-darkest dark:text-custom-light mb-6">Você tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.</p>
-            <div class="flex items-center justify-end gap-4 mt-8">
-                <button type="button" id="cancelDeleteBtn" class="bg-custom-medium hover:bg-custom-dark text-custom-darkest hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
-                <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Excluir</button>
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden modal-backdrop">
+        <div class="bg-base-white dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-md mx-4 modal-content">
+            <div class="flex justify-center mb-4">
+                <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                    <i data-lucide="trash-2" class="w-6 h-6 text-red-600 dark:text-red-500"></i>
+                </div>
+            </div>
+            <h2 class="text-xl text-center font-bold text-custom-darkest dark:text-custom-light mb-2"></h2>
+            <p class="text-custom-dark dark:text-custom-medium text-center mb-6"></p>
+            <div class="grid grid-cols-2 items-center gap-4 mt-8">
+                <button type="button" id="cancelDeleteBtn" class="bg-custom-light hover:bg-custom-medium/50 dark:bg-custom-dark/50 dark:hover:bg-custom-dark text-custom-darkest dark:text-white font-bold py-2.5 px-4 rounded-lg transition-colors w-full">Cancelar</button>
+                <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors w-full">Excluir</button>
             </div>
         </div>
     </div>
 
-    <!-- NOVO: Modal para Definir Data Prevista -->
-    <div id="dueDateModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-        <div class="bg-custom-light dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-xl shadow-2xl p-8 w-full max-w-sm mx-4">
-            <h2 class="text-2xl font-bold text-custom-darkest dark:text-custom-light mb-4 flex items-center gap-2">
-                <i data-lucide="calendar-plus" class="w-6 h-6"></i>
-                Definir Data Prevista
-            </h2>
-            <p class="text-custom-darkest dark:text-custom-light mb-6">Esta tarefa precisa de uma data de previsão para avançar. Por favor, defina um prazo.</p>
-            <form id="dueDateForm">
-                <div class="mb-4">
-                    <label for="modalDueDate" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Data Prevista</label>
-                    <input type="date" id="modalDueDate" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-white/50 dark:bg-custom-dark/50 rounded-lg w-full py-3 px-4 text-custom-darkest dark:text-custom-light" required>
-                </div>
-                <div class="flex items-center justify-end gap-4 mt-8">
-                    <button type="button" id="cancelDueDateBtn" class="bg-custom-medium hover:bg-custom-dark text-custom-darkest hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
-                    <button type="submit" class="bg-custom-dark hover:bg-custom-darkest text-white font-bold py-2 px-4 rounded-lg transition-colors">Salvar Data</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-3"></div>
 
     <script type="module" src="js/main.js"></script>
-    <!--Toasts-->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
 </body>
 </html>

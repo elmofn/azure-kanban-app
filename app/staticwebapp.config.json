@@ -1,10 +1,17 @@
 {
   "auth": {
+    "rolesSource": "/api/getRoles",
     "identityProviders": {
       "google": {
         "registration": {
           "clientIdSettingName": "GOOGLE_CLIENT_ID",
           "clientSecretSettingName": "GOOGLE_CLIENT_SECRET"
+        },
+        "login": {
+          "scopes": [
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile"
+          ]
         }
       }
     }
@@ -20,11 +27,17 @@
     },
     {
       "route": "/*",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": [
+        "travelcash_user"
+      ]
     }
   ],
   "responseOverrides": {
     "401": {
+      "redirect": "/login",
+      "statusCode": 302
+    },
+    "403": {
       "redirect": "/login",
       "statusCode": 302
     }

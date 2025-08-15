@@ -64,7 +64,8 @@ app.http('createTask', {
                 createdBy: user.userDetails,
                 history: [{ status: 'todo', timestamp: new Date().toISOString() }],
                 order: -Date.now(),
-                dueDate: taskData.dueDate || null
+                dueDate: taskData.dueDate || null,
+                attachments: taskData.attachments
             };
 
             // 2. Cria a nova tarefa com o ID único garantido.

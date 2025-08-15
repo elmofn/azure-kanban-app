@@ -11,13 +11,16 @@ export async function getUserInfo() {
 }
 
 export async function fetchTasks() {
-    const fetchData = fetch('/api/getTasks').then(response => {
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
-    });
-    const minDisplayTime = new Promise(resolve => setTimeout(resolve, 3000));
-    const [fetchedTasks] = await Promise.all([fetchData, minDisplayTime]);
-    return fetchedTasks;
+    const response = await fetch('/api/getTasks');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.json();
+}
+
+// FUNÇÃO QUE ESTAVA EM FALTA
+export async function fetchUsers() {
+    const response = await fetch('/api/getUsers');
+    if (!response.ok) throw new Error('Falha ao buscar usuários.');
+    return await response.json();
 }
 
 export async function createTask(taskPayload) {
@@ -87,6 +90,45 @@ export async function fetchArchivedTasks() {
     const response = await fetch('/api/getArchivedTasks');
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+}
+
+export async function uploadAttachment(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/tasks/attachments', {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (!response.ok) {
+        throw new Error('Falha no upload do anexo.');
+    }
+    return await response.json();
+}
+
+export async function deleteAttachment(blobName) {
+    const response = await fetch(`/api/tasks/attachments/${blobName}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok && response.status !== 404) {
+        throw new Error('Falha ao eliminar o anexo.');
+    }
+    return response;
+}
+
+export async function addUser(userPayload) {
+    const response = await fetch('/api/addUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userPayload),
+    });
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(errorBody || 'Falha ao adicionar o utilizador.');
     }
     return await response.json();
 }

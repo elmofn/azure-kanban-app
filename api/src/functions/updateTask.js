@@ -22,7 +22,7 @@ app.http('updateTask', {
     handler: async (request, context) => {
         const taskId = request.params.id;
         const updatedData = await request.json();
-        context.log(`HTTP trigger function: A atualizar tarefa com ID: ${taskId}`);
+        context.log(`A atualizar tarefa com ID: ${taskId}`);
 
         try {
             const { resource: existingTask } = await container.item(taskId, taskId).read();
@@ -30,18 +30,24 @@ app.http('updateTask', {
                 return { status: 404, body: "Tarefa não encontrada." };
             }
 
-            // Se uma nova string de responsáveis foi enviada, converte-a para um array
             if (updatedData.responsible && typeof updatedData.responsible === 'string') {
                 updatedData.responsible = updatedData.responsible.split(',').map(name => name.trim());
-            }else if (Object.keys(updatedData).some(key => key !== 'status')) {
+            } else if (Object.keys(updatedData).some(key => key !== 'status')) {
                 if (!existingTask.history) existingTask.history = [];
                 existingTask.history.push({ status: 'edited', timestamp: new Date().toISOString() });
             }
+
+            // NOVO: Garante que os anexos sejam sempre um array
+            if (updatedData.attachments && !Array.isArray(updatedData.attachments)) {
+                updatedData.attachments = [];
+            }
+
             const taskToUpdate = { ...existingTask, ...updatedData };
             const { resource: replaced } = await container.item(taskId, taskId).replace(taskToUpdate);
+            
             context.extraOutputs.set(signalROutput, {
-                target: 'taskUpdated',      // Evento específico
-                arguments: [replaced]       // 'replaced' é o objeto da tarefa atualizada
+                target: 'taskUpdated',
+                arguments: [replaced]
             });
             return { jsonBody: replaced };
         } catch (error) {
