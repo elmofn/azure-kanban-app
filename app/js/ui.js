@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { fetchArchivedTasks } from './api.js';
 
 export const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -226,37 +227,52 @@ export function updateActiveView() {
     }
 }
 
-export function renderArchivedTasks() {
+export async function renderArchivedTasks() {
     const archivedViewEl = document.getElementById('archivedView');
-    const archivedTasks = state.tasks.filter(t => t.status === 'done');
-    const tableBody = archivedTasks.map(task => `
-        <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
-            <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
-            <td class="px-6 py-4 whitespace-nowrap">${task.project || ''}</td>
-            <td class="px-6 py-4 whitespace-nowrap">${Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible}</td>
-            <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
-            <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center gap-2"><button class="restore-btn text-blue-400 hover:text-blue-600 p-1" data-task-id="${task.id}" title="Restaurar Tarefa"><i data-lucide="undo-2" class="w-5 h-5 pointer-events-none"></i></button><button class="delete-btn text-red-400 hover:text-red-600 p-1" data-task-id="${task.id}" title="Excluir Tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button></div></td>
-        </tr>`).join('');
-    const tableHtml = `
-        <div class="bg-white dark:bg-custom-darkest/40 rounded-lg shadow overflow-hidden">
-            <table class="min-w-full">
-                <thead class="bg-custom-light dark:bg-custom-darkest/60">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider"><div class="flex items-center gap-2"><span>Tarefa Concluída</span><span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${archivedTasks.length}</span></div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Projeto</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Criação</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-custom-light dark:divide-custom-dark">
-                    ${tableBody}
-                    ${archivedTasks.length === 0 ? '<tr><td colspan="5" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa arquivada.</td></tr>' : ''}
-                </tbody>
-            </table>
-        </div>`;
-    archivedViewEl.innerHTML = tableHtml;
-    lucide.createIcons();
+    archivedViewEl.innerHTML = '<p class="text-center p-8">Carregando tarefas arquivadas...</p>'; // Mostra um feedback de carregamento
+
+    try {
+        const archivedTasks = await fetchArchivedTasks(); // Busca os dados da nova API
+
+        const tableBody = archivedTasks.map(task => `
+            <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
+                <td class="px-6 py-4"><div class="description-truncate" title="${task.description}">${task.description}</div></td>
+                <td class="px-6 py-4 whitespace-nowrap">${task.project || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                        <button class="restore-btn text-blue-400 hover:text-blue-600 p-1" data-task-id="${task.id}" title="Restaurar Tarefa"><i data-lucide="undo-2" class="w-5 h-5 pointer-events-none"></i></button>
+                        <button class="delete-btn text-red-400 hover:text-red-600 p-1" data-task-id="${task.id}" title="Excluir Tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
+                    </div>
+                </td>
+            </tr>`).join('');
+
+        const tableHtml = `
+            <div class="bg-white dark:bg-custom-darkest/40 rounded-lg shadow overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="bg-custom-light dark:bg-custom-darkest/60">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider"><div class="flex items-center gap-2"><span>Tarefa Concluída</span><span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${archivedTasks.length}</span></div></th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Projeto</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Responsável</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Criação</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-custom-light dark:divide-custom-dark">
+                        ${tableBody}
+                        ${archivedTasks.length === 0 ? '<tr><td colspan="5" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa arquivada.</td></tr>' : ''}
+                    </tbody>
+                </table>
+            </div>`;
+
+        archivedViewEl.innerHTML = tableHtml;
+        lucide.createIcons();
+    } catch (error) {
+        console.error("Erro ao renderizar tarefas arquivadas:", error);
+        archivedViewEl.innerHTML = '<p class="text-center p-8 text-red-500">Falha ao carregar tarefas arquivadas.</p>';
+    }
 }
 
 export function renderTaskHistory(taskId) {

@@ -42,6 +42,7 @@ function initializeEventListeners() {
     const taskForm = document.getElementById('taskForm');
     const historyModal = document.getElementById('taskHistoryModal');
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    const listViewEl = document.getElementById('listView');
 
     // Lógica do Tema (Dark/Light)
     const themeToggle = document.getElementById('theme-toggle');
@@ -88,6 +89,22 @@ function initializeEventListeners() {
         }
     });
 
+    // --- CORREÇÃO: Lógica de ordenação da lista ---
+    listViewEl.addEventListener('click', (e) => {
+        const header = e.target.closest('.sortable-header');
+        if (!header) return;
+
+        const sortBy = header.dataset.sortBy;
+
+        if (state.sortColumn === sortBy) {
+            state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            state.sortColumn = sortBy;
+            state.sortDirection = 'asc';
+        }
+        ui.renderListView();
+    });
+
     // Modal de Tarefa (Adicionar/Editar)
     document.getElementById('addTaskBtn').addEventListener('click', () => {
         state.editingTaskId = null;
@@ -103,24 +120,14 @@ function initializeEventListeners() {
 
     taskForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
         const projectName = document.getElementById('taskProject').value.trim();
         const newColor = document.getElementById('taskProjectColor').value;
-
-        // --- LÓGICA DE VERIFICAÇÃO DE COR CORRIGIDA ---
-
-        // 1. Encontra a cor original do projeto, se ele já existir.
         let originalProjectColor = null;
         const existingProjectTask = state.tasks.find(t => t.project === projectName);
         if (existingProjectTask) {
             originalProjectColor = existingProjectTask.projectColor;
         }
-
-        // 2. Decide se o modal de confirmação deve ser exibido.
-        // Isso acontece se o projeto já existia E a cor foi alterada.
         const shouldPromptColorChange = originalProjectColor && originalProjectColor !== newColor;
-
-        // Constrói o payload da tarefa (o que será salvo)
         const responsibleTags = Array.from(document.querySelectorAll('#responsible-input-container .responsible-tag'));
         const dueDateValue = document.getElementById('taskDueDate').value;
         let dueDateISO = null;
@@ -138,8 +145,6 @@ function initializeEventListeners() {
             dueDate: dueDateISO,
             azureLink: document.getElementById('taskAzureLink').value
         };
-
-        // Ação de salvar a tarefa atual (será reutilizada)
         const saveTaskAction = async () => {
             try {
                 const apiCall = state.editingTaskId ? api.updateTask(state.editingTaskId, taskPayload) : api.createTask(taskPayload);
@@ -151,55 +156,42 @@ function initializeEventListeners() {
                 alert('Falha ao salvar a tarefa.');
             }
         };
-        
-        // 3. Executa a lógica
         if (shouldPromptColorChange) {
             showConfirmModal(
                 'Atualizar Cor do Projeto',
                 `Você alterou a cor do projeto "${projectName}". Deseja aplicar esta nova cor para TODAS as tarefas deste projeto?`,
-                // Ação se o usuário clicar "Sim, em todas"
                 async () => { 
                     try {
-                        // Primeiro, atualiza a cor globalmente
                         await api.updateProjectColor(projectName, newColor);
                     } catch (error) {
                         console.error("Erro ao atualizar a cor global do projeto:", error);
                         alert("Falha ao atualizar a cor de todas as tarefas.");
                     }
-                    // Depois, salva a tarefa atual (a API do SignalR irá forçar a atualização de tudo)
                     await saveTaskAction();
                 }
             );
-            // Modifica o texto dos botões para ficar mais claro
             document.getElementById('confirmDeleteBtn').textContent = 'Sim, em todas';
             document.getElementById('cancelDeleteBtn').textContent = 'Não, só nesta';
-
-            // Define a ação do botão "Cancelar" (neste caso, "Não, só nesta")
             document.getElementById('cancelDeleteBtn').onclick = async () => {
-                await saveTaskAction(); // Apenas salva a tarefa atual com a nova cor
+                await saveTaskAction();
                 deleteConfirmModal.classList.add('hidden');
             };
-
         } else {
-            // Se não houver mudança de cor, ou se o projeto for novo, apenas salva a tarefa
             await saveTaskAction();
         }
     });
     
-    // Modal de Histórico
+    // Modais de Histórico e Confirmação
     document.getElementById('closeHistoryBtn').addEventListener('click', () => historyModal.classList.add('hidden'));
     document.getElementById('cancelDeleteBtn').addEventListener('click', () => deleteConfirmModal.classList.add('hidden'));
-
-    // Adiciona o listener para o seletor de status (usando delegação de evento)
+    
     historyModal.addEventListener('change', async (e) => {
         if (e.target.id === 'modal-status-selector') {
             const newStatus = e.target.value;
             const taskId = state.lastInteractedTaskId;
             if (!taskId) return;
-
             try {
                 await api.updateTask(taskId, { status: newStatus });
-                // O SignalR cuidará de atualizar a UI para todos.
             } catch (error) {
                 console.error("Falha ao atualizar status pelo modal:", error);
                 alert('Não foi possível alterar o status.');
@@ -207,14 +199,11 @@ function initializeEventListeners() {
         }
     });
     
-    // ---- BOTÃO DE EDITAR TAREFA (CORRIGIDO) ----
     document.getElementById('editTaskBtn').addEventListener('click', () => {
         const taskId = state.lastInteractedTaskId;
         const taskToEdit = state.tasks.find(t => t.id === taskId);
         if (!taskToEdit) return;
-
         state.editingTaskId = taskId;
-
         document.getElementById('modalTitle').textContent = 'Editar Tarefa';
         document.getElementById('taskTitle').value = taskToEdit.title || '';
         document.getElementById('taskDescription').value = taskToEdit.description || '';
@@ -224,11 +213,9 @@ function initializeEventListeners() {
         document.getElementById('color-picker-button').style.backgroundColor = taskToEdit.projectColor || '#526D82';
         document.getElementById('taskDueDate').value = taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : '';
         document.getElementById('taskPriority').value = taskToEdit.priority || 'Média';
-
         ui.setupTagInput(taskToEdit.responsible || []);
         ui.setupProjectSuggestions();
         ui.setupCustomColorPicker();
-        
         historyModal.classList.add('hidden');
         taskModal.classList.remove('hidden');
     });
@@ -245,60 +232,50 @@ function initializeEventListeners() {
         }
     });
 
-    // Delegação de eventos para botões de ação
+    // Delegação de eventos
     document.body.addEventListener('click', async (e) => {
-        const target = e.target;
-        const infoBtn = target.closest('.info-btn');
-        const deleteBtn = target.closest('.delete-btn');
-        const approveBtn = target.closest('.approve-btn');
-        const restoreBtn = target.closest('.restore-btn');
-        const deleteCommentBtn = target.closest('.delete-comment-btn');
-
+        const infoBtn = e.target.closest('.info-btn');
         if (infoBtn) {
             state.lastInteractedTaskId = infoBtn.dataset.taskId;
             ui.highlightTask(state.lastInteractedTaskId, false);
             ui.renderTaskHistory(state.lastInteractedTaskId);
         }
 
+        const deleteBtn = e.target.closest('.delete-btn');
         if (deleteBtn) {
             const taskId = deleteBtn.dataset.taskId;
-            // --- LÓGICA ATUALIZADA ---
             showConfirmModal(
                 'Excluir Tarefa',
                 'Você tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.',
                 async () => {
-                    try {
-                        await api.deleteTask(taskId);
-                    } catch (error) {
-                        console.error("Erro ao excluir tarefa:", error);
-                    }
+                    try { await api.deleteTask(taskId); } 
+                    catch (error) { console.error("Erro ao excluir tarefa:", error); }
                 }
             );
         }
         
+        const approveBtn = e.target.closest('.approve-btn');
         if (approveBtn) {
             try { await api.updateTask(approveBtn.dataset.taskId, { status: 'done' }); } 
             catch (error) { console.error("Erro ao aprovar tarefa:", error); }
         }
 
+        const restoreBtn = e.target.closest('.restore-btn');
         if(restoreBtn) {
             try { await api.updateTask(restoreBtn.dataset.taskId, { status: 'todo' }); } 
             catch (error) { console.error("Erro ao restaurar tarefa:", error); }
         }
 
+        const deleteCommentBtn = e.target.closest('.delete-comment-btn');
         if(deleteCommentBtn) {
             const taskId = deleteCommentBtn.dataset.taskId;
             const commentIndex = parseInt(deleteCommentBtn.dataset.commentIndex, 10);
-             // --- LÓGICA ATUALIZADA ---
             showConfirmModal(
                 'Excluir Comentário',
                 'Você tem certeza que deseja excluir este comentário?',
                 async () => {
-                    try {
-                        await api.deleteComment(taskId, commentIndex);
-                    } catch (error) {
-                        console.error("Erro ao excluir comentário:", error);
-                    }
+                    try { await api.deleteComment(taskId, commentIndex); } 
+                    catch (error) { console.error("Erro ao excluir comentário:", error); }
                 }
             );
         }
@@ -376,13 +353,4 @@ function showConfirmModal(title, message, onConfirm, onCancel = null) {
     };
     
     deleteConfirmModal.classList.remove('hidden');
-}
-
-export async function updateProjectColor(projectName, newColor) {
-    const response = await fetch(`/api/updateProjectColor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectName, newColor })
-    });
-    if (!response.ok) throw new Error('Falha ao atualizar a cor do projeto.');
 }

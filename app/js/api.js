@@ -82,3 +82,11 @@ export async function updateProjectColor(projectName, newColor) {
     });
     if (!response.ok) throw new Error('Falha ao atualizar a cor do projeto.');
 }
+
+export async function fetchArchivedTasks() {
+    const response = await fetch('/api/getArchivedTasks');
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+}
