@@ -20,13 +20,24 @@ export const getSortIndicator = (columnName) => {
 };
 
 export const isTaskOverdue = (task) => {
-    if (!task.dueDate || !['inprogress', 'stopped', 'homologation'].includes(task.status)) {
+    // Condição 1: A tarefa deve ter uma data e estar em um status ativo
+    if (!task.dueDate || !['stopped', 'inprogress', 'homologation'].includes(task.status)) {
         return false;
     }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+
+    // --- LÓGICA DE DATA CORRIGIDA ---
+
+    // 1. Pega a data de "hoje", mas no fuso horário universal (UTC) e sem as horas.
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+    // 2. Converte a data de vencimento da tarefa para um objeto Date.
+    // Como ela já está em formato ISO String (com Z), ela já é UTC.
     const dueDate = new Date(task.dueDate);
-    return dueDate < today;
+
+    // 3. Compara as duas datas. A tarefa só é considerada atrasada se a data de
+    //    vencimento for estritamente MENOR que o início do dia de hoje em UTC.
+    return dueDate < todayUTC;
 };
 
 export const createTaskElement = (task) => {
