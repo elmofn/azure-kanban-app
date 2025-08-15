@@ -28,7 +28,9 @@ app.http('getTasks', {
             const { resources: items } = await container.items.query(querySpec).fetchAll();
             return { jsonBody: items };
         } catch (error) {
-            context.log.error(`Erro ao buscar tarefas: ${error.message}`);
+            // --- CORREÇÃO AQUI ---
+            // Trocamos 'context.log.error' por 'context.error'
+            context.error(`Erro ao buscar tarefas: ${error.message}`); 
             return { status: 500, body: "Erro ao buscar tarefas." };
         }
     }
