@@ -143,67 +143,72 @@ export function renderKanbanView() {
 export function renderListView() {
     const listViewEl = document.getElementById('listView');
     let activeTasks = state.tasks.filter(t => t.status !== 'done');
+    
     if (state.selectedResponsible !== 'all') {
         activeTasks = activeTasks.filter(t => Array.isArray(t.responsible) && t.responsible.includes(state.selectedResponsible));
     }
     if (state.selectedProject !== 'all') {
         activeTasks = activeTasks.filter(t => t.project === state.selectedProject);
     }
-    activeTasks.sort((a, b) => {
-        const valA = (state.sortColumn === 'responsible' ? a.responsible?.[0] : a[state.sortColumn]) || '';
-        const valB = (state.sortColumn === 'responsible' ? b.responsible?.[0] : b[state.sortColumn]) || '';
-        if (state.sortColumn === 'createdAt' || state.sortColumn === 'dueDate') {
-            if (!valA) return 1; if (!valB) return -1;
-            return state.sortDirection === 'asc' ? new Date(valA) - new Date(valB) : new Date(valB) - new Date(valA);
-        }
-        return state.sortDirection === 'asc' ? String(valA).trim().toLowerCase().localeCompare(String(valB).trim().toLowerCase()) : String(valB).trim().toLowerCase().localeCompare(String(valA).trim().toLowerCase());
-    });
-    const statusLabels = { todo: 'A fazer', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
+
+    const priorityMap = { 'Urgente': 4, 'Alta': 3, 'Média': 2, 'Baixa': 1 };
+
+    if (state.selectedResponsible !== 'all') {
+        activeTasks.sort((a, b) => (a.order || 0) - (b.order || 0) || (priorityMap[b.priority] || 0) - (priorityMap[a.priority] || 0));
+    } else {
+        activeTasks.sort((a, b) => {
+            const valA = (state.sortColumn === 'responsible' ? a.responsible?.[0] : a[state.sortColumn]) || '';
+            const valB = (state.sortColumn === 'responsible' ? b.responsible?.[0] : b[state.sortColumn]) || '';
+            if (state.sortColumn === 'createdAt' || state.sortColumn === 'dueDate') {
+                if (!valA) return 1; if (!valB) return -1;
+                return state.sortDirection === 'asc' ? new Date(valA) - new Date(valB) : new Date(valB) - new Date(valA);
+            }
+            return state.sortDirection === 'asc' 
+                ? String(valA).trim().toLowerCase().localeCompare(String(valB).trim().toLowerCase()) 
+                : String(valB).trim().toLowerCase().localeCompare(String(valA).trim().toLowerCase());
+        });
+    }
+
+    const statusLabels = { todo: 'Fila', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
+    const isDraggable = state.selectedResponsible !== 'all';
+
     const tableBody = activeTasks.map(task => {
         let azureLinkIcon = task.azureLink ? `<a href="${task.azureLink}" target="_blank" rel="noopener noreferrer" class="azure-link-btn text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i></a>` : `<div class="w-7 h-7"></div>`;
         let projectTag = task.project ? `<span class="text-xs font-bold rounded px-2 py-1" style="background-color:${task.projectColor}; color: #fff;">${task.project}</span>` : '';
         return `
             <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50" data-task-id="${task.id}">
-                
-                <td class="px-6 py-4 font-mono text-xs text-white-500 whitespace-nowrap" title="${task.id}">${task.id}</td>
-                
-                <td class="px-6 py-4">
-                    <div><div class="text-custom-darkest dark:text-custom-light" title="${task.description}">${task.title}</div></div>
-                </td>
+                <td class="px-2 py-4 text-center ${isDraggable ? 'drag-handle cursor-grab' : 'text-gray-400 dark:text-gray-600'}"><i data-lucide="grip-vertical" class="w-5 h-5 inline-block"></i></td>
+                <td class="px-6 py-4 font-mono text-xs text-gray-500 whitespace-nowrap" title="${task.id}">${task.id}</td>
+                <td class="px-6 py-4"><div><div class="text-custom-darkest dark:text-custom-light" title="${task.description}">${task.title}</div></div></td>
                 <td class="px-6 py-4 whitespace-nowrap">${projectTag}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${Array.isArray(task.responsible) ? task.responsible.join(', ') : task.responsible}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${statusLabels[task.status] || task.status}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${formatDate(task.createdAt)}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${task.dueDate ? formatDate(task.dueDate) : ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-2">
-                        <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
-                        ${azureLinkIcon}
-                        <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
-                    </div>
-                </td>
-            </tr>
-        `;
+                <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center gap-2"><button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1" data-task-id="${task.id}" title="Ver histórico"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>${azureLinkIcon}<button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button></div></td>
+            </tr>`;
     }).join('');
+
+    // --- MUDANÇA PRINCIPAL AQUI ---
+    const headerClass = isDraggable ? '' : 'cursor-pointer sortable-header';
+
     const tableHtml = `
         <div class="bg-white dark:bg-custom-darkest/40 rounded-lg shadow overflow-hidden">
             <table class="min-w-full">
                 <thead class="bg-custom-light dark:bg-custom-darkest/60">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="id"><div class="flex items-center">ID ${getSortIndicator('id')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="title"><div class="flex items-center gap-2"><span>Tarefa</span><span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${activeTasks.length}</span>${getSortIndicator('title')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="project"><div class="flex items-center">Projeto ${getSortIndicator('project')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="responsible"><div class="flex items-center">Responsável ${getSortIndicator('responsible')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="status"><div class="flex items-center">Estado ${getSortIndicator('status')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="createdAt"><div class="flex items-center">Criação ${getSortIndicator('createdAt')}</div></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider cursor-pointer sortable-header" data-sort-by="dueDate"><div class="flex items-center">Previsão ${getSortIndicator('dueDate')}</div></th>
+                        <th class="px-2 py-3"></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="id"><div class="flex items-center">ID ${getSortIndicator('id')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="title"><div class="flex items-center gap-2"><span>Tarefa</span><span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${activeTasks.length}</span>${getSortIndicator('title')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="project"><div class="flex items-center">Projeto ${getSortIndicator('project')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="responsible"><div class="flex items-center">Responsável ${getSortIndicator('responsible')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="status"><div class="flex items-center">Estado ${getSortIndicator('status')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="createdAt"><div class="flex items-center">Criação ${getSortIndicator('createdAt')}</div></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="dueDate"><div class="flex items-center">Data Prevista ${getSortIndicator('dueDate')}</div></th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
-                <tbody id="list-view-tbody" class="divide-y divide-custom-light dark:divide-custom-dark">
-                    ${tableBody}
-                    ${activeTasks.length === 0 ? '<tr><td colspan="8" class="text-center py-10 text-custom-dark dark:text-custom-medium">Nenhuma tarefa encontrada.</td></tr>' : ''}
-                </tbody>
+                <tbody id="list-view-tbody" class="divide-y divide-custom-light dark:divide-custom-dark">${tableBody}</tbody>
             </table>
         </div>`;
     listViewEl.innerHTML = tableHtml;

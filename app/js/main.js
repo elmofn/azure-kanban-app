@@ -3,11 +3,13 @@ import * as api from './api.js';
 import * as ui from './ui.js';
 import { connectToSignalR } from './signalr.js';
 
+let listSortableInstance = null;
+let kanbanSortableInstances = [];
+
 // --- PONTO DE ENTRADA DA APLICAÇÃO ---
 document.addEventListener('DOMContentLoaded', async () => {
     const loaderContainerEl = document.getElementById('loader-container');
     const mainContentEl = document.getElementById('main-content');
-
     try {
         initializeEventListeners();
         
@@ -24,7 +26,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainContentEl.classList.add('content-reveal');
 
         ui.updateActiveView();
+        ui.renderArchivedTasks();
         lucide.createIcons();
+        
+        updateDragAndDropState(); // <-- PONTO INICIAL DE INICIALIZAÇÃO DO D&D
         
         connectToSignalR();
 
@@ -34,22 +39,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// --- FUNÇÃO "MESTRE" PARA GERENCIAR O DRAG-AND-DROP ---
+function updateDragAndDropState() {
+    // Destrói TODAS as instâncias de ordenação existentes para evitar conflitos
+    if (listSortableInstance) {
+        listSortableInstance.destroy();
+        listSortableInstance = null;
+    }
+    kanbanSortableInstances.forEach(instance => instance.destroy());
+    kanbanSortableInstances = [];
+
+    // Verifica o estado atual e ativa a funcionalidade correta
+    if (state.currentView === 'kanban') {
+        initializeKanbanDragAndDrop();
+    } 
+    else if (state.currentView === 'list' && state.selectedResponsible !== 'all') {
+        initializeListDragAndDrop();
+    }
+}
 
 // --- FUNÇÃO CENTRAL QUE INICIALIZA TODAS AS INTERAÇÕES ---
-
 function initializeEventListeners() {
     const taskModal = document.getElementById('taskModal');
     const taskForm = document.getElementById('taskForm');
     const historyModal = document.getElementById('taskHistoryModal');
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const listViewEl = document.getElementById('listView');
-
+    
     // Lógica do Tema (Dark/Light)
     const themeToggle = document.getElementById('theme-toggle');
     const themeIconLight = document.getElementById('theme-icon-light');
     const themeIconDark = document.getElementById('theme-icon-dark');
     const applyTheme = () => {
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        if (localStorage.getItem('theme') === 'dark' || (!('theme'in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
             themeIconLight.classList.remove('hidden');
             themeIconDark.classList.add('hidden');
@@ -70,10 +92,12 @@ function initializeEventListeners() {
     document.getElementById('responsibleFilter').addEventListener('change', (e) => {
         state.selectedResponsible = e.target.value;
         ui.updateActiveView();
+        updateDragAndDropState(); // Sempre reavalia o D&D
     });
     document.getElementById('projectFilter').addEventListener('change', (e) => {
         state.selectedProject = e.target.value;
         ui.updateActiveView();
+        updateDragAndDropState(); // Sempre reavalia o D&D
     });
 
     // Seletor de View
@@ -86,16 +110,16 @@ function initializeEventListeners() {
                 ui.highlightTask(null);
             }
             ui.updateActiveView();
+            updateDragAndDropState(); // Sempre reavalia o D&D
         }
     });
 
-    // --- CORREÇÃO: Lógica de ordenação da lista ---
+    // Lógica de ordenação da lista
     listViewEl.addEventListener('click', (e) => {
+        if (state.selectedResponsible !== 'all') return;
         const header = e.target.closest('.sortable-header');
         if (!header) return;
-
         const sortBy = header.dataset.sortBy;
-
         if (state.sortColumn === sortBy) {
             state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -104,8 +128,8 @@ function initializeEventListeners() {
         }
         ui.renderListView();
     });
-
-    // Modal de Tarefa (Adicionar/Editar)
+    
+    // Modal de Tarefa
     document.getElementById('addTaskBtn').addEventListener('click', () => {
         state.editingTaskId = null;
         document.getElementById('modalTitle').textContent = 'Nova Tarefa';
@@ -160,7 +184,7 @@ function initializeEventListeners() {
             showConfirmModal(
                 'Atualizar Cor do Projeto',
                 `Você alterou a cor do projeto "${projectName}". Deseja aplicar esta nova cor para TODAS as tarefas deste projeto?`,
-                async () => { 
+                async () => {
                     try {
                         await api.updateProjectColor(projectName, newColor);
                     } catch (error) {
@@ -180,25 +204,25 @@ function initializeEventListeners() {
             await saveTaskAction();
         }
     });
-    
-    // Modais de Histórico e Confirmação
+
+    // Modais e Botões
     document.getElementById('closeHistoryBtn').addEventListener('click', () => historyModal.classList.add('hidden'));
     document.getElementById('cancelDeleteBtn').addEventListener('click', () => deleteConfirmModal.classList.add('hidden'));
-    
     historyModal.addEventListener('change', async (e) => {
         if (e.target.id === 'modal-status-selector') {
             const newStatus = e.target.value;
             const taskId = state.lastInteractedTaskId;
             if (!taskId) return;
             try {
-                await api.updateTask(taskId, { status: newStatus });
+                await api.updateTask(taskId, {
+                    status: newStatus
+                });
             } catch (error) {
                 console.error("Falha ao atualizar status pelo modal:", error);
                 alert('Não foi possível alterar o status.');
             }
         }
     });
-    
     document.getElementById('editTaskBtn').addEventListener('click', () => {
         const taskId = state.lastInteractedTaskId;
         const taskToEdit = state.tasks.find(t => t.id === taskId);
@@ -219,20 +243,21 @@ function initializeEventListeners() {
         historyModal.classList.add('hidden');
         taskModal.classList.remove('hidden');
     });
-
     document.getElementById('add-comment-btn').addEventListener('click', async () => {
         const commentInput = document.getElementById('comment-input');
         const text = commentInput.value.trim();
         if (!text || !state.lastInteractedTaskId) return;
         try {
-            await api.addComment(state.lastInteractedTaskId, { text });
+            await api.addComment(state.lastInteractedTaskId, {
+                text
+            });
             commentInput.value = '';
         } catch (error) {
             console.error("Erro ao adicionar comentário:", error);
         }
     });
 
-    // Delegação de eventos
+    // Delegação de Eventos
     document.body.addEventListener('click', async (e) => {
         const infoBtn = e.target.closest('.info-btn');
         if (infoBtn) {
@@ -240,7 +265,6 @@ function initializeEventListeners() {
             ui.highlightTask(state.lastInteractedTaskId, false);
             ui.renderTaskHistory(state.lastInteractedTaskId);
         }
-
         const deleteBtn = e.target.closest('.delete-btn');
         if (deleteBtn) {
             const taskId = deleteBtn.dataset.taskId;
@@ -248,46 +272,57 @@ function initializeEventListeners() {
                 'Excluir Tarefa',
                 'Você tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.',
                 async () => {
-                    try { await api.deleteTask(taskId); } 
-                    catch (error) { console.error("Erro ao excluir tarefa:", error); }
+                    try {
+                        await api.deleteTask(taskId);
+                    } catch (error) {
+                        console.error("Erro ao excluir tarefa:", error);
+                    }
                 }
             );
         }
-        
         const approveBtn = e.target.closest('.approve-btn');
         if (approveBtn) {
-            try { await api.updateTask(approveBtn.dataset.taskId, { status: 'done' }); } 
-            catch (error) { console.error("Erro ao aprovar tarefa:", error); }
+            try {
+                await api.updateTask(approveBtn.dataset.taskId, {
+                    status: 'done'
+                });
+            } catch (error) {
+                console.error("Erro ao aprovar tarefa:", error);
+            }
         }
-
         const restoreBtn = e.target.closest('.restore-btn');
-        if(restoreBtn) {
-            try { await api.updateTask(restoreBtn.dataset.taskId, { status: 'todo' }); } 
-            catch (error) { console.error("Erro ao restaurar tarefa:", error); }
+        if (restoreBtn) {
+            try {
+                await api.updateTask(restoreBtn.dataset.taskId, {
+                    status: 'todo'
+                });
+            } catch (error) {
+                console.error("Erro ao restaurar tarefa:", error);
+            }
         }
-
         const deleteCommentBtn = e.target.closest('.delete-comment-btn');
-        if(deleteCommentBtn) {
+        if (deleteCommentBtn) {
             const taskId = deleteCommentBtn.dataset.taskId;
             const commentIndex = parseInt(deleteCommentBtn.dataset.commentIndex, 10);
             showConfirmModal(
                 'Excluir Comentário',
                 'Você tem certeza que deseja excluir este comentário?',
                 async () => {
-                    try { await api.deleteComment(taskId, commentIndex); } 
-                    catch (error) { console.error("Erro ao excluir comentário:", error); }
+                    try {
+                        await api.deleteComment(taskId, commentIndex);
+                    } catch (error) {
+                        console.error("Erro ao excluir comentário:", error);
+                    }
                 }
             );
         }
     });
-
-    // Drag-and-Drop
-    initializeDragAndDrop();
 }
 
-function initializeDragAndDrop() {
-    document.querySelectorAll('.task-list').forEach(list => {
-        new Sortable(list, {
+// --- FUNÇÕES DE DRAG-AND-DROP ---
+function initializeKanbanDragAndDrop() {
+    document.querySelectorAll('.kanban-column .task-list').forEach(list => {
+        const sortable = new Sortable(list, {
             group: 'kanban',
             animation: 150,
             ghostClass: 'sortable-ghost',
@@ -296,32 +331,48 @@ function initializeDragAndDrop() {
                 const taskId = evt.item.dataset.taskId;
                 const newStatus = evt.to.dataset.columnId;
                 const task = state.tasks.find(t => t.id === taskId);
-                
-                state.taskToHighlightTemporarily = taskId;
-                
                 if (task && task.status !== newStatus) {
                     await api.updateTask(taskId, { status: newStatus });
                 }
-
                 const orderedTasksPayload = [];
                 document.querySelectorAll('.kanban-column .task-list').forEach(column => {
                     Array.from(column.children).forEach((taskCard, index) => {
-                        if (taskCard.dataset.taskId) {
-                            orderedTasksPayload.push({
-                                id: taskCard.dataset.taskId,
-                                order: index
-                            });
-                        }
+                        if (taskCard.dataset.taskId) orderedTasksPayload.push({
+                            id: taskCard.dataset.taskId,
+                            order: index
+                        });
                     });
                 });
-                
                 try {
                     await api.updateOrder(orderedTasksPayload);
                 } catch (error) {
-                     console.error("Erro ao reordenar tarefas:", error);
+                    console.error("Erro ao reordenar tarefas:", error);
                 }
             }
         });
+        kanbanSortableInstances.push(sortable);
+    });
+}
+
+function initializeListDragAndDrop() {
+    const tbody = document.getElementById('list-view-tbody');
+    if (!tbody) return;
+    listSortableInstance = new Sortable(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost-list',
+        onEnd: async function () {
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const orderedTasksPayload = rows.map((row, index) => ({
+                id: row.dataset.taskId,
+                order: index
+            }));
+            try {
+                await api.updateOrder(orderedTasksPayload);
+            } catch (error) {
+                console.error("Erro ao reordenar tarefas na lista:", error);
+            }
+        }
     });
 }
 
@@ -331,26 +382,18 @@ function showConfirmModal(title, message, onConfirm, onCancel = null) {
     const confirmMessage = deleteConfirmModal.querySelector('p');
     const confirmButton = document.getElementById('confirmDeleteBtn');
     const cancelButton = document.getElementById('cancelDeleteBtn');
-
-    // Restaura o texto padrão dos botões
-    confirmButton.textContent = 'Confirmar'; // Mudei de 'Excluir' para um termo mais genérico
+    confirmButton.textContent = 'Confirmar';
     cancelButton.textContent = 'Cancelar';
-
-    confirmTitle.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-yellow-500"></i> ${title}`; // Mudei a cor para amarelo, mais genérico que vermelho
+    confirmTitle.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-yellow-500"></i> ${title}`;
     confirmMessage.textContent = message;
     lucide.createIcons();
-
     confirmButton.onclick = () => {
         onConfirm();
-        deleteConfirmModal.classList.add('hidden'); // <-- ESTA LINHA ESTAVA FALTANDO
-    };
-
-    cancelButton.onclick = () => {
-        if (onCancel) {
-            onCancel();
-        }
         deleteConfirmModal.classList.add('hidden');
     };
-    
+    cancelButton.onclick = () => {
+        if (onCancel) onCancel();
+        deleteConfirmModal.classList.add('hidden');
+    };
     deleteConfirmModal.classList.remove('hidden');
 }
