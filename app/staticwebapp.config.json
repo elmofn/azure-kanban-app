@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "auth": {
     "rolesSource": "/api/getRoles",
@@ -46,3 +47,6 @@
     "Cache-Control": "no-cache"
   }
 }
+=======
+{"auth":{"rolesSource":"/api/getRoles","identityProviders":{"google":{"registration":{"clientIdSettingName":"GOOGLE_CLIENT_ID","clientSecretSettingName":"GOOGLE_CLIENT_SECRET_APP_SETTING_NAME"}}}},"routes":[{"route":"/login","redirect":"/.auth/login/google?prompt=select_account"},{"route":"/logout","redirect":"/.auth/logout"},{"route":"/*","allowedRoles":["travelcash_user"]}],"responseOverrides":{"401":{"redirect":"/login","statusCode":302},"403":{"redirect":"/login","statusCode":302}},"globalHeaders":{"Cache-Control":"no-cache"}}
+>>>>>>> 34fde12fcaaeeb19629b65ff83468e5f2487d7a2
