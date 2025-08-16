@@ -5,7 +5,7 @@
       "google": {
         "registration": {
           "clientIdSettingName": "GOOGLE_CLIENT_ID",
-          "clientSecretSettingName": "GOOGLE_CLIENT_SECRET"
+          "clientSecretSettingName": "GOOGLE_CLIENT_SECRET_APP_SETTING_NAME"
         },
         "login": {
           "scopes": [
