@@ -1,12 +1,14 @@
 # azure-kanban-app
+
 # Quadro de Tarefas Colaborativo com Azure
+
 Este projeto é uma aplicação web full-stack de um quadro de tarefas no estilo Kanban, construída do zero e implantada na nuvem da Microsoft Azure. O objetivo foi transformar um protótipo simples em HTML/CSS/JS numa solução robusta, escalável e colaborativa em tempo real.
 
 O quadro permite que múltiplos utilizadores criem, editem, movam, reordenem e excluam tarefas, com todas as alterações a serem refletidas instantaneamente no ecrã de todos os participantes, sem a necessidade de recarregar a página.
 
 Este projeto foi uma jornada de aprendizagem profunda, cobrindo desde o desenvolvimento frontend e backend até à arquitetura e implantação de serviços na nuvem.
 
-✨ Funcionalidades Principais
+✨  Funcionalidades Principais
 Visualização Dupla: Interface alternável entre um quadro Kanban tradicional e uma visualização em lista.
 
 CRUD Completo: Funcionalidade completa para Criar, Ler, Atualizar e Excluir tarefas.
@@ -49,7 +51,7 @@ SWA CLI (npm install -g @azure/static-web-apps-cli)
 
 Clone o repositório:
 
-git clone https://github.com/[SEU-USUARIO]/azure-kanban-app.git
+git clone https://github.com/\[SEU-USUARIO]/azure-kanban-app.git
 cd azure-kanban-app
 
 Instale as dependências da API:
@@ -77,3 +79,4 @@ swa start app --api-location api
 Abra a Aplicação:
 
 Aceda a http://localhost:4280 no seu navegador.
+
