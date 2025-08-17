@@ -29,6 +29,9 @@
       "redirect": "/.auth/logout"
     },
     {
+    "route": "/api/debug" // <-- ADICIONE ESTA NOVA REGRA AQUI
+    },
+    {
       "route": "/*",
       "allowedRoles": [
         "travelcash_user"
