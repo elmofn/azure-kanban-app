@@ -21,41 +21,46 @@ app.http('getRoles', {
 
             if (!email) {
                 context.warn('Não foi possível encontrar o claim de e-mail.');
-                // --- CORREÇÃO AQUI ---
                 return { jsonBody: { roles: ['authenticated'] } };
             }
 
+            // ETAPA CRÍTICA: Verifica se o utilizador existe na nossa coleção "Users"
             const { resource: existingUser } = await usersContainer.item(email, email).read().catch(() => ({ resource: null }));
 
             if (existingUser) {
                 context.log(`Utilizador ${email} encontrado na whitelist.`);
                 
+                // Atualiza o perfil com os dados mais recentes da Google
                 const nameClaim = clientPrincipal.claims.find(c => c.typ === 'name');
                 const pictureClaim = clientPrincipal.claims.find(c => c.typ === 'picture');
                 existingUser.name = nameClaim ? nameClaim.val : email;
                 existingUser.picture = pictureClaim ? pictureClaim.val : '';
                 await usersContainer.items.upsert(existingUser);
 
-                const roles = ['authenticated', 'travelcash_user'];
+                const responsePayload = {
+                    claims: {
+                        picture: existingUser.picture,
+                        name: existingUser.name
+                    },
+                    roles: ['authenticated', 'travelcash_user']
+                };
 
+                // Se o utilizador tiver uma role de admin, adiciona-a
                 if (existingUser.isAdmin === true) {
-                    roles.push('admin');
+                    responsePayload.roles.push('admin');
                     context.log(`Utilizador ${email} autorizado com a role 'admin'.`);
                 }
 
-                // --- CORREÇÃO PRINCIPAL AQUI ---
-                // A resposta DEVE ser um objeto com a chave "roles"
-                return { jsonBody: { roles: roles } };
+                return { jsonBody: responsePayload };
 
             } else {
+                // Se o utilizador não estiver na coleção, o acesso é negado.
                 context.warn(`ACESSO NEGADO: Utilizador ${email} não encontrado na whitelist.`);
-                // --- CORREÇÃO AQUI ---
-                return { jsonBody: { roles: ['authenticated'] } };
+                return { jsonBody: { roles: ['authenticated'] } }; // Não atribui a role "travelcash_user"
             }
 
         } catch (error) {
             context.error(`Erro na função de roles: ${error.message}`);
-            // --- CORREÇÃO AQUI ---
             return { jsonBody: { roles: ['authenticated'] } };
         }
     }

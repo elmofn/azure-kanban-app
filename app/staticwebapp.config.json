@@ -1,1 +1,51 @@
-{"platform":{"apiRuntime":"node:20"},"auth":{"rolesSource":"/api/src/functions/getRoles","identityProviders":{"google":{"registration":{"clientIdSettingName":"GOOGLE_CLIENT_ID","clientSecretSettingName":"GOOGLE_CLIENT_SECRET_APP_SETTING_NAME"}}}},"routes":[{"route":"/login","redirect":"/.auth/login/google?prompt=select_account"},{"route":"/logout","redirect":"/.auth/logout"},{"route":"/*","allowedRoles":["travelcash_user"]}],"responseOverrides":{"401":{"redirect":"/login","statusCode":302},"403":{"redirect":"/login","statusCode":302}},"globalHeaders":{"Cache-Control":"no-cache"}}
+{
+  "platform": {
+    "apiRuntime": "node:20"
+  },
+  "auth": {
+    "rolesSource": "/api/getRoles",
+    "identityProviders": {
+      "google": {
+        "registration": {
+          "clientIdSettingName": "GOOGLE_CLIENT_ID",
+          "clientSecretSettingName": "GOOGLE_CLIENT_SECRET"
+        },
+        "login": {
+          "scopes": [
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile"
+          ]
+        }
+      }
+    }
+  },
+  "routes": [
+    {
+      "route": "/login",
+      "redirect": "/.auth/login/google?prompt=select_account"
+    },
+    {
+      "route": "/logout",
+      "redirect": "/.auth/logout"
+    },
+    {
+      "route": "/*",
+      "allowedRoles": [
+        "travelcash_user"
+      ]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/login",
+      "statusCode": 302
+    },
+    "403": {
+      "redirect": "/login",
+      "statusCode": 302
+    }
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-cache"
+  }
+}
