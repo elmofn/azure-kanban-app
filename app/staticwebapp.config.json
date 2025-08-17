@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {
   "platform": {
     "apiRuntime": "node:20"
@@ -50,6 +49,3 @@
     "Cache-Control": "no-cache"
   }
 }
-=======
-{"platform":{"apiRuntime":"node:20"},"auth":{"rolesSource":"/api/getRoles","identityProviders":{"google":{"registration":{"clientIdSettingName":"GOOGLE_CLIENT_ID","clientSecretSettingName":"GOOGLE_CLIENT_SECRET_APP_SETTING_NAME"}}}},"routes":[{"route":"/login","redirect":"/.auth/login/google?prompt=select_account"},{"route":"/logout","redirect":"/.auth/logout"},{"route":"/*","allowedRoles":["travelcash_user"]}],"responseOverrides":{"401":{"redirect":"/login","statusCode":302},"403":{"redirect":"/login","statusCode":302}},"globalHeaders":{"Cache-Control":"no-cache"}}
->>>>>>> 86474166b0e753ecc5d3052d7a518aa8ef5ec6d3
