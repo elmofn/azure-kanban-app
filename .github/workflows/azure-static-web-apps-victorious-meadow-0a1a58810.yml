@@ -28,6 +28,7 @@ jobs:
           action: "upload"
           app_location: "app"
           api_location: "api"
+          api_language_version: '20.x'
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
