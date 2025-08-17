@@ -27,8 +27,13 @@
     {
       "route": "/logout",
       "redirect": "/.auth/logout"
+    },
+    {
+      "route": "/*",
+      "allowedRoles": [
+        "travelcash_user"
+      ]
     }
-    // A REGRA "/*" FOI REMOVIDA DESTA SEÇÃO
   ],
   "responseOverrides": {
     "401": {
