@@ -29,7 +29,10 @@
       "redirect": "/.auth/logout"
     },
     {
-    "route": "/api/debug" // <-- ADICIONE ESTA NOVA REGRA AQUI
+    "route": "/api/debug" // <-- 
+    },
+    {
+    "route": "/api/ping" // <-- 
     },
     {
       "route": "/*",
