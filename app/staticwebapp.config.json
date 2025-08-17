@@ -27,19 +27,8 @@
     {
       "route": "/logout",
       "redirect": "/.auth/logout"
-    },
-    {
-    "route": "/api/debug" // <-- 
-    },
-    {
-    "route": "/api/ping" // <-- 
-    },
-    {
-      "route": "/*",
-      "allowedRoles": [
-        "travelcash_user"
-      ]
     }
+    // A REGRA "/*" FOI REMOVIDA DESTA SEÇÃO
   ],
   "responseOverrides": {
     "401": {
