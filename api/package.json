@@ -7,6 +7,9 @@
     "start": "func start",
     "test": "echo \"No tests yet...\""
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@azure/cosmos": "^4.4.1",
     "@azure/functions": "^4.7.2",
