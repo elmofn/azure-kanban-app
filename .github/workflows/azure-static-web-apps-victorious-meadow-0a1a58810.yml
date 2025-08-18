@@ -28,6 +28,9 @@ jobs:
           action: "upload"
           app_location: "app"
           api_location: "api"
+          # A linha abaixo instrui a Azure a não tentar construir a pasta 'app',
+          # resolvendo o erro "Could not detect any platform".
+          skip_app_build: true
           
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
