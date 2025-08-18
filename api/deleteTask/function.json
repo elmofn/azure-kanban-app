@@ -6,7 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["delete"],
-      "routeName": "deleteTask/{id}"
+      "route": "deleteTask/{id}"
     },
     {
       "type": "http",
