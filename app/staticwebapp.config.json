@@ -26,10 +26,7 @@
     },
     {
       "route": "/*",
-      "allowedRoles": [
-        "authenticated",
-        "travelcash_user"
-      ]
+      "allowedRoles": ["authenticated"]
     }
   ],
   "responseOverrides": {
