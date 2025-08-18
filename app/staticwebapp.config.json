@@ -1,9 +1,5 @@
 {
-  "platform": {
-    "apiRuntime": "node:20"
-  },
   "auth": {
-    "rolesSource": "/api/getRoles",
     "identityProviders": {
       "google": {
         "registration": {
@@ -30,9 +26,7 @@
     },
     {
       "route": "/*",
-      "allowedRoles": [
-        "travelcash_user"
-      ]
+      "allowedRoles": ["authenticated"]
     }
   ],
   "responseOverrides": {
