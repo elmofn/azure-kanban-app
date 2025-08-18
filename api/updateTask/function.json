@@ -6,7 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["put"],
-      "routeName": "updateTask/{id}"
+      "route": "updateTask/{id}"
     },
     {
       "type": "http",
