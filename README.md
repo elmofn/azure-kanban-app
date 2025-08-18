@@ -1,6 +1,6 @@
 # azure-kanban-app
 # Quadro de Tarefas Colaborativo com Azure
-Este projeto é uma aplicação web full-stack de um quadro de tarefas no estilo Kanban, construída do zero e implantada na nuvem da Microsoft Azure. O objetivo foi transformar um protótipo simples em HTML/CSS/JS numa solução robusta, escalável e colaborativa em tempo real.
+ este projeto é uma aplicação web full-stack de um quadro de tarefas no estilo Kanban, construída do zero e implantada na nuvem da Microsoft Azure. O objetivo foi transformar um protótipo simples em HTML/CSS/JS numa solução robusta, escalável e colaborativa em tempo real.
 
 O quadro permite que múltiplos utilizadores criem, editem, movam, reordenem e excluam tarefas, com todas as alterações a serem refletidas instantaneamente no ecrã de todos os participantes, sem a necessidade de recarregar a página.
 
