@@ -8,7 +8,7 @@
       "methods": [
         "post"
       ],
-      "routeName": "getRoles"
+      "route": "getRoles"
     },
     {
       "type": "http",

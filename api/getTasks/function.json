@@ -8,7 +8,7 @@
       "methods": [
         "get"
       ],
-      "routeName": "getTasks"
+      "route": "getTasks"
     },
     {
       "type": "http",
