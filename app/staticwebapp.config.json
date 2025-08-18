@@ -1,7 +1,4 @@
 {
-  "platform": {
-    "apiRuntime": "node:20"
-  },
   "auth": {
     "identityProviders": {
       "google": {
