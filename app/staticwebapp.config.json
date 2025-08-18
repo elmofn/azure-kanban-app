@@ -26,7 +26,10 @@
     },
     {
       "route": "/*",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": [
+        "authenticated",
+        "travelcash_user"
+      ]
     }
   ],
   "responseOverrides": {

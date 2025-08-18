@@ -19,6 +19,19 @@ jobs:
         with:
           submodules: true
           lfs: false
+
+      # Garante Node 20 para a API
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: api/package-lock.json
+
+      # Instala dependências da API (frontend não precisa build)
+      - name: Install API dependencies
+        run: npm install --prefix api
+
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -26,12 +39,10 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_MEADOW_0A1A58810 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "app"
-          api_location: "api"
-          # A linha abaixo é a mudança crucial. Ela diz à Azure que o seu frontend
-          # já está "construído" e que a pasta final é a própria 'app'.
-          output_location: "" 
-          
+          app_location: "app" # pasta do frontend já pronto
+          api_location: "api" # pasta da API
+          output_location: "" # vazio porque não há build do frontend
+
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
