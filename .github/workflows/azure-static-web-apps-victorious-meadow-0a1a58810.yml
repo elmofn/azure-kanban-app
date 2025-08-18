@@ -40,7 +40,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "app" # pasta do frontend já pronto
-          api_location: "" # pasta da API
+          api_location: "api" # pasta da API
           output_location: "" # vazio porque não há build do frontend
 
   close_pull_request_job:
