@@ -3,6 +3,7 @@
     "apiRuntime": "node:20"
   },
   "auth": {
+    "rolesSource": "/api/getRoles",
     "identityProviders": {
       "google": {
         "registration": {
@@ -30,7 +31,6 @@
     {
       "route": "/*",
       "allowedRoles": [
-        "authenticated",
         "travelcash_user"
       ]
     }
