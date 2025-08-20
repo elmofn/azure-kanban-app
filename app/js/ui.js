@@ -230,7 +230,7 @@ export function renderListView() {
 
     const tableBody = activeTasks.map(task => {
         const overdueClass = isTaskOverdue(task) ? ' bg-red-500/5 dark:bg-red-500/10' : '';
-        let projectTag = task.project ? `<span class="text-xs font-semibold rounded px-2 py-1" style="background-color:${task.projectColor}20; color: ${task.projectColor};">${task.project}</span>` : '';
+        let projectTag = task.project ? `<span class="text-xs font-semibold rounded px-2 py-1 text-white" style="background-color:${task.projectColor};">${task.project}</span>` : '';
         const attachmentIcon = (task.attachments && task.attachments.length > 0) ? `<div class="flex items-center gap-1 text-xs text-custom-medium dark:text-custom-light font-semibold"><i data-lucide="paperclip" class="w-4 h-4"></i>${task.attachments.length}</div>` : '';
         const responsibleNames = (task.responsible || []).map(r => (typeof r === 'object' ? r.name : r)).join(', ');
 
