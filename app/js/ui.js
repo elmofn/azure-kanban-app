@@ -178,7 +178,7 @@ export function renderKanbanView() {
         activeTasks = activeTasks.filter(t => t.project === state.selectedProject);
     }
 
-    const columns = [ { id: 'todo', name: 'Fila' }, { id: 'stopped', name: 'Parado' }, { id: 'inprogress', name: 'Em Andamento' }, { id: 'homologation', name: 'Em Homologação' }];
+    const columns = [ { id: 'todo', name: 'Fila' }, { id: 'stopped', name: 'Parado' }, { id: 'inprogress', name: 'Andamento' }, { id: 'homologation', name: 'Homologação' }];
     columns.forEach(col => {
         const columnEl = kanbanViewEl.querySelector(`.kanban-column:has([data-column-id="${col.id}"])`);
         if (columnEl) {
@@ -237,14 +237,15 @@ export function renderListView() {
         return `
             <tr class="list-row hover:bg-custom-light/50 dark:hover:bg-custom-dark/50 fade-in${overdueClass}" data-task-id="${task.id}">
                 <td class="px-3 py-3 text-center text-custom-medium ${isDraggable ? 'drag-handle cursor-grab' : 'opacity-50'}"><i data-lucide="grip-vertical" class="w-5 h-5 inline-block"></i></td>
+                <td class="px-3 py-3 font-mono text-xs font-bold text-custom-medium dark:text-custom-light whitespace-nowrap">${task.id}</td>
                 <td class="px-3 py-3">
                     <div class="text-custom-darkest dark:text-custom-light">${task.title}</div>
-                    <div class="font-mono text-xs font-bold text-custom-medium dark:text-custom-light">${task.id}</div>
                 </td>
                 <td class="px-3 py-3 whitespace-nowrap">${projectTag}</td>
                 <td class="px-3 py-3 whitespace-nowrap text-sm">${responsibleNames}</td>
                 <td class="px-3 py-3 whitespace-nowrap">${attachmentIcon}</td>
                 <td class="px-3 py-3 whitespace-nowrap"><span class="text-xs font-semibold rounded-full px-2.5 py-1 bg-custom-medium/50 dark:bg-custom-dark/80">${statusLabels[task.status] || task.status}</span></td>
+                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${formatDate(task.createdAt)}</td>
                 <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${task.dueDate ? formatDate(task.dueDate) : 'Sem prazo'}</td>
                 <td class="px-3 py-3 whitespace-nowrap"><div class="flex items-center gap-1">
                     <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1.5 rounded-full" data-task-id="${task.id}" title="Ver detalhes"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
@@ -262,12 +263,14 @@ export function renderListView() {
                 <thead class="bg-custom-light/50 dark:bg-custom-darkest/60">
                     <tr>
                         <th class="px-3 py-3 w-12"></th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="id"><div class="flex items-center">ID ${getSortIndicator('id')}</div></th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="title"><div class="flex items-center gap-2"><span>Tarefa</span><span class="bg-custom-medium/50 dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${activeTasks.length}</span>${getSortIndicator('title')}</div></th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="project"><div class="flex items-center">Projeto ${getSortIndicator('project')}</div></th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="responsible"><div class="flex items-center">Responsável ${getSortIndicator('responsible')}</div></th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider"><div class="flex items-center"><i data-lucide="paperclip" class="w-4 h-4"></i></div></th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="status"><div class="flex items-center">Estado ${getSortIndicator('status')}</div></th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="dueDate"><div class="flex items-center">Data Prevista ${getSortIndicator('dueDate')}</div></th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="createdAt"><div class="flex items-center">Criação ${getSortIndicator('createdAt')}</div></th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider ${headerClass}" data-sort-by="dueDate"><div class="flex items-center">Previsão ${getSortIndicator('dueDate')}</div></th>
                         <th class="px-3 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
