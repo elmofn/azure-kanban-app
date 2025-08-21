@@ -52,7 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         updateDragAndDropState();
         
-        connectToSignalR();
+        // Passamos a função de atualização do drag-and-drop para o SignalR
+        connectToSignalR(updateDragAndDropState);
 
     } catch (error)
     {
