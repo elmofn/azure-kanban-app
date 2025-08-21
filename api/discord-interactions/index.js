@@ -1,54 +1,62 @@
 const { InteractionType, InteractionResponseType, verifyKey } = require('discord-interactions');
 
-module.exports = async function (context, req) {
-    context.log('Recebido um pedido do Discord.');
+function getRequestRawBody(req) {
+    if (req.rawBody && req.rawBody.length > 0) return req.rawBody;
+    return JSON.stringify(req.body);
+}
 
+module.exports = async function (context, req) {
+    // Verificação de segurança
     const signature = req.headers['x-signature-ed25519'];
     const timestamp = req.headers['x-signature-timestamp'];
-    const rawBody = req.rawBody;
+    const rawBody = getRequestRawBody(req);
     const publicKey = process.env.DISCORD_PUBLIC_KEY;
 
-    if (!publicKey) {
-        context.log.error('A DISCORD_PUBLIC_KEY não está configurada nas variáveis de ambiente.');
-        context.res = { status: 500, body: 'Configuração interna do bot em falta.' };
+    const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
+    if (!isValidRequest) {
+        context.res = { status: 401, body: 'Assinatura inválida.' };
         return;
     }
 
-    try {
-        const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
+    const interaction = req.body;
 
-        if (!isValidRequest) {
-            context.log.warn('Assinatura inválida. Acesso negado.');
-            context.res = { status: 401, body: 'Assinatura inválida.' };
-            return;
-        }
-
-        context.log('A assinatura do pedido é válida.');
-        const interaction = req.body;
-
-        if (interaction.type === InteractionType.PING) {
-            context.log('É um PING. A responder com PONG.');
-            context.res = {
-                body: { type: InteractionResponseType.PONG }
-            };
-            return;
-        }
-
-        if (interaction.type === InteractionType.APPLICATION_COMMAND) {
-            context.log(`Recebido o comando: ${interaction.data.name}`);
-            // Apenas uma resposta temporária para a validação funcionar
-             context.res = {
-                body: {
-                    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-                    data: { content: 'O comando foi recebido, mas ainda não faz nada.' },
-                }
-            };
-            return;
-        }
-
-    } catch (err) {
-        context.log.error('Ocorreu um erro inesperado:', err);
-        context.res = { status: 500, body: 'Erro interno no servidor.' };
+    // Responder ao PING de verificação do Discord
+    if (interaction.type === InteractionType.PING) {
+        context.res = {
+            headers: { 'Content-Type': 'application/json' },
+            body: { type: InteractionResponseType.PONG }
+        };
         return;
+    }
+
+    // Processar um comando
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+        const commandName = interaction.data.name;
+
+        // **PASSO 1: ADIAR A RESPOSTA IMEDIATAMENTE**
+        context.res = {
+            headers: { 'Content-Type': 'application/json' },
+            body: { type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE }
+        };
+
+        // **PASSO 2: PREPARAR A RESPOSTA FINAL**
+        let responseContent = 'Ocorreu um erro.';
+
+        if (commandName === 'ping') {
+            responseContent = 'Pong! A resposta adiada está a funcionar!';
+        }
+
+        // **PASSO 3: ENVIAR A RESPOSTA FINAL EDITANDO A MENSAGEM ADIADA**
+        const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
+        
+        try {
+            await fetch(followUpUrl, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: responseContent }),
+            });
+        } catch (error) {
+            context.log.error('Erro ao enviar a resposta final:', error);
+        }
     }
 };
