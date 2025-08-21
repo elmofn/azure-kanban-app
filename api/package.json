@@ -14,10 +14,12 @@
     "@azure/functions": "^4.7.2",
     "@azure/storage-blob": "^12.28.0",
     "axios": "^1.7.2",
+    "discord-interactions": "^3.4.0",
     "multer": "^2.0.2",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "azure-functions-core-tools": "^4.x"
+    "azure-functions-core-tools": "^4.x",
+    "dotenv": "^17.2.1"
   }
 }
