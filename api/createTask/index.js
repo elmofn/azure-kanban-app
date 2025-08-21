@@ -1,9 +1,11 @@
 const { CosmosClient } = require("@azure/cosmos");
+const axios = require('axios');
 
 const connectionString = process.env.CosmosDB;
 const client = new CosmosClient(connectionString);
 const database = client.database("TasksDB");
 const container = database.container("Tasks");
+const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
 function getUser(request) {
     const header = request.headers['x-ms-client-principal'];
@@ -11,6 +13,15 @@ function getUser(request) {
     const encoded = Buffer.from(header, 'base64');
     const decoded = encoded.toString('ascii');
     return JSON.parse(decoded);
+}
+
+async function sendDiscordNotification(payload) {
+    if (!discordWebhookUrl) return;
+    try {
+        await axios.post(discordWebhookUrl, payload);
+    } catch (error) {
+        console.error('Erro ao enviar notificação para o Discord:', error.message);
+    }
 }
 
 module.exports = async function (context, req) {
@@ -39,7 +50,7 @@ module.exports = async function (context, req) {
             numericId: newNumericId,
             title: taskData.title,
             description: taskData.description,
-            responsible: taskData.responsible, // Assumindo que já vem como array do frontend
+            responsible: taskData.responsible,
             azureLink: taskData.azureLink || '',
             project: taskData.project || '',
             projectColor: taskData.projectColor || '#526D82',
@@ -54,6 +65,23 @@ module.exports = async function (context, req) {
         };
 
         await container.items.create(newTask);
+
+        const responsibleNames = newTask.responsible.map(r => (typeof r === 'object' ? r.name : r)).join(', ');
+        await sendDiscordNotification({
+            username: "SyncBoard",
+            avatar_url: "https://i.imgur.com/AoaA8WI.png",
+            content: `**📝 Nova Tarefa Criada por ${user.userDetails}**`,
+            embeds: [{
+                title: `[${newTask.id}] ${newTask.title}`,
+                description: newTask.description,
+                color: parseInt(newTask.projectColor.substring(1), 16),
+                fields: [
+                    { name: "Projeto", value: newTask.project || "N/A", inline: true },
+                    { name: "Responsáveis", value: responsibleNames || "N/A", inline: true },
+                    { name: "Prioridade", value: newTask.priority, inline: true }
+                ]
+            }]
+        });
 
         context.bindings.signalRMessage = {
             target: 'taskCreated',
