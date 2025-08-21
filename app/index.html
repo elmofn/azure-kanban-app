@@ -94,6 +94,12 @@
         </header>
 
         <div class="container mx-auto px-4 lg:px-6 pt-4 flex items-center gap-4">
+            <div class="relative w-full max-w-xs">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i data-lucide="search" class="w-4 h-4 text-custom-medium"></i>
+                </div>
+                <input type="search" id="search-input" placeholder="Buscar por ID, título..." class="w-full bg-base-white dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-lg text-sm py-2 pl-10 pr-4 focus:ring-2 focus:ring-custom-dark focus:outline-none">
+            </div>
             <div id="project-filter-dropdown" class="relative w-56">
                 <button type="button" id="project-filter-button" class="dropdown-button w-full flex items-center justify-between bg-base-white dark:bg-custom-darkest border border-custom-medium/50 dark:border-custom-dark/50 rounded-lg text-sm font-semibold py-2 px-3 focus:ring-2 focus:ring-custom-dark focus:outline-none">
                     <span id="project-filter-label" class="truncate">Todos os Projetos</span>

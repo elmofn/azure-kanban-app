@@ -171,11 +171,21 @@ export function renderKanbanView() {
     kanbanViewEl.querySelectorAll('.task-list').forEach(list => list.innerHTML = '');
     
     let activeTasks = state.tasks.filter(t => t.status !== 'done');
+    
+    // FILTROS
     if (state.selectedResponsible !== 'all') {
         activeTasks = activeTasks.filter(t => Array.isArray(t.responsible) && t.responsible.map(r => (typeof r === 'object' ? r.name : r)).includes(state.selectedResponsible));
     }
     if (state.selectedProject !== 'all') {
         activeTasks = activeTasks.filter(t => t.project === state.selectedProject);
+    }
+    // FILTRO DE BUSCA
+    if (state.searchQuery) {
+        activeTasks = activeTasks.filter(t =>
+            (t.title && t.title.toLowerCase().includes(state.searchQuery)) ||
+            (t.description && t.description.toLowerCase().includes(state.searchQuery)) ||
+            (t.id && t.id.toLowerCase().includes(state.searchQuery))
+        );
     }
 
     const columns = [ { id: 'todo', name: 'Fila' }, { id: 'stopped', name: 'Parado' }, { id: 'inprogress', name: 'Andamento' }, { id: 'homologation', name: 'Homologação' }];
@@ -197,11 +207,20 @@ export function renderListView() {
     let activeTasks = state.tasks.filter(t => t.status !== 'done');
     const statusLabels = { todo: 'Fila', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
     
+    // FILTROS
     if (state.selectedResponsible !== 'all') {
         activeTasks = activeTasks.filter(t => Array.isArray(t.responsible) && t.responsible.map(r => (typeof r === 'object' ? r.name : r)).includes(state.selectedResponsible));
     }
     if (state.selectedProject !== 'all') {
         activeTasks = activeTasks.filter(t => t.project === state.selectedProject);
+    }
+    // FILTRO DE BUSCA
+    if (state.searchQuery) {
+        activeTasks = activeTasks.filter(t =>
+            (t.title && t.title.toLowerCase().includes(state.searchQuery)) ||
+            (t.description && t.description.toLowerCase().includes(state.searchQuery)) ||
+            (t.id && t.id.toLowerCase().includes(state.searchQuery))
+        );
     }
 
     if (state.selectedResponsible !== 'all') {

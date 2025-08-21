@@ -91,6 +91,13 @@ function initializeEventListeners() {
     const fileInput = document.getElementById('task-attachment-input');
     const attachmentList = document.getElementById('attachment-list');
 
+    // LÓGICA DA BUSCA
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', () => {
+        state.searchQuery = searchInput.value.trim().toLowerCase();
+        ui.updateActiveView();
+    });
+
     // Lógica para anexos
     fileInput.addEventListener('change', (e) => {
         for (const file of e.target.files) {

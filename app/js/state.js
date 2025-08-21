@@ -10,5 +10,6 @@ export const state = {
     lastInteractedTaskId: null,
     editingTaskId: null,
     taskBeingMoved: null,
-    currentUser: null
+    currentUser: null,
+    searchQuery: '',
 };
