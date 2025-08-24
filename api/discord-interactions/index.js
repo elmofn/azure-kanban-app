@@ -5,7 +5,7 @@ const { CosmosClient } = require("@azure/cosmos");
 const connectionString = process.env.CosmosDB;
 const client = new CosmosClient(connectionString);
 const database = client.database("TasksDB");
-const tasksContainer = database.container("Tasks");
+const tasksContainer = database.container("Tasks"); // Nome correto da variável
 const usersContainer = database.container("Users");
 
 function getRequestRawBody(req) {
@@ -22,13 +22,11 @@ module.exports = async function (context, req) {
 
     const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
     if (!isValidRequest) {
-        context.res = { status: 401, body: 'Assinatura inválida.' };
-        return;
+        return { status: 401, body: 'Assinatura inválida.' };
     }
 
     const interaction = req.body;
 
-    // Lidar com eventos de Autocomplete de forma otimizada
     if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
         const focusedOption = interaction.data.options.find(opt => opt.focused);
         let choices = [];
@@ -48,24 +46,30 @@ module.exports = async function (context, req) {
                     .filter(u => u.name.toLowerCase().includes(focusedOption.value.toLowerCase()) && u.name !== 'DEFINIR')
                     .map(u => ({ name: u.name, value: u.name }));
             }
+
+            context.res = {
+                headers: { 'Content-Type': 'application/json' },
+                body: {
+                    type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+                    data: { choices: choices.slice(0, 25) }
+                }
+            };
+
         } catch (error) {
             context.log.error("Erro no autocomplete:", error);
-            // Se houver um erro, enviamos uma lista vazia para não quebrar a interface do Discord
-        }
-
-        context.res = {
-            headers: { 'Content-Type': 'application/json' },
-            body: {
-                type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-                data: { choices: choices.slice(0, 25) }
+            context.res = {
+                 headers: { 'Content-Type': 'application/json' },
+                 body: {
+                    type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+                    data: { choices: [] }
+                }
             }
-        };
+        }
         return;
     }
 
     if (interaction.type === InteractionType.PING) {
-        context.res = { headers: { 'Content-Type': 'application/json' }, body: { type: InteractionResponseType.PONG }};
-        return;
+        return { headers: { 'Content-Type': 'application/json' }, body: { type: InteractionResponseType.PONG }};
     }
 
     if (interaction.type === InteractionType.APPLICATION_COMMAND) {
@@ -81,7 +85,7 @@ module.exports = async function (context, req) {
             if (commandName === 'ping') {
                 responsePayload = { content: 'Pong! A ligação está perfeita.' };
             } else if (commandName === 'novatarefa') {
-                responsePayload = await handleCreateTask(interaction, context);
+                responsePayload = await handleCreateTask(interaction, context); // Passar o context para os logs
             } else {
                 responsePayload = { content: 'Comando desconhecido.' };
             }
@@ -105,6 +109,7 @@ module.exports = async function (context, req) {
     }
 };
 
+// --- Lógica do Comando /novatarefa corrigida ---
 async function handleCreateTask(interaction, context) {
     const options = interaction.data.options;
     const title = options.find(opt => opt.name === 'titulo').value;
@@ -117,9 +122,11 @@ async function handleCreateTask(interaction, context) {
     const responsibleUser = allUsers.find(u => u.name === responsibleName);
 
     if (!responsibleUser) {
+        context.log.warn(`Responsável "${responsibleName}" não encontrado na base de dados.`);
         return { content: `❌ Não foi possível encontrar o responsável "${responsibleName}" no quadro de tarefas. Por favor, selecione um utilizador da lista.` };
     }
 
+    // **A CORREÇÃO ESTÁ AQUI:** Usar `tasksContainer` em vez de `container`
     const operations = [{ op: 'incr', path: '/currentId', value: 1 }];
     const { resource: updatedCounter } = await tasksContainer.item("taskCounter", "taskCounter").patch(operations);
     const newTaskId = `TC-${String(updatedCounter.currentId).padStart(3, '0')}`;
@@ -146,19 +153,22 @@ async function handleCreateTask(interaction, context) {
     await tasksContainer.items.create(newTask);
     context.log(`Tarefa ${newTask.id} criada com sucesso.`);
 
+    // Constrói a resposta final com um Embed
     return {
         content: `✅ Tarefa **${newTask.id}** criada com sucesso!`,
-        embeds: [{
-            title: `[${newTask.id}] ${newTask.title}`,
-            description: newTask.description,
-            color: parseInt("526D82", 16),
-            fields: [
-                { name: "Projeto", value: newTask.project, inline: true },
-                { name: "Responsável", value: responsibleUser.name, inline: true },
-                { name: "Prioridade", value: newTask.priority, inline: true },
-            ],
-            footer: { text: `Criado por: ${discordUser.username}` },
-            timestamp: new Date().toISOString()
-        }]
+        embeds: [
+            {
+                title: `[${newTask.id}] ${newTask.title}`,
+                description: newTask.description,
+                color: parseInt("526D82", 16),
+                fields: [
+                    { name: "Projeto", value: newTask.project, inline: true },
+                    { name: "Responsável", value: responsibleUser.name, inline: true },
+                    { name: "Prioridade", value: newTask.priority, inline: true },
+                ],
+                footer: { text: `Criado por: ${discordUser.username}` },
+                timestamp: new Date().toISOString()
+            }
+        ]
     };
 }
