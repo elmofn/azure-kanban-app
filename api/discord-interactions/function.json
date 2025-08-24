@@ -15,6 +15,13 @@
       "type": "http",
       "direction": "out",
       "name": "res"
+    },
+    {
+      "name": "outputQueueItem",
+      "type": "queue",
+      "direction": "out",
+      "queueName": "tasks-to-create",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }
