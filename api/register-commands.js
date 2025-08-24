@@ -1,6 +1,4 @@
-// Carrega as variáveis de ambiente do ficheiro .env para uso local
 require('dotenv').config({ path: './.env' }); 
-
 const axios = require('axios');
 
 const appId = process.env.DISCORD_APP_ID;
@@ -11,13 +9,35 @@ if (!appId || !botToken) {
     process.exit(1);
 }
 
-// A lista de comandos que queremos registar
 const commands = [
     {
         name: 'ping',
-        description: 'Responde com Pong! (para testar se o bot está online)',
+        description: 'Verifica se o bot está a responder.',
     },
-    // Aqui adicionaremos mais comandos no futuro, como /novatarefa
+    {
+        name: 'novatarefa',
+        description: 'Cria uma nova tarefa no quadro SyncBoard.',
+        options: [
+            {
+                name: 'titulo',
+                description: 'O título da nova tarefa.',
+                type: 3, // 3 = String
+                required: true,
+            },
+            {
+                name: 'descricao',
+                description: 'A descrição detalhada da tarefa.',
+                type: 3, // 3 = String
+                required: true,
+            },
+            {
+                name: 'projeto',
+                description: 'O nome do projeto ao qual a tarefa pertence.',
+                type: 3,
+                required: false,
+            }
+        ],
+    }
 ];
 
 const url = `https://discord.com/api/v10/applications/${appId}/commands`;
@@ -32,8 +52,7 @@ axios.put(url, commands, {
 })
 .then(response => {
     console.log('Comandos registados com sucesso!');
-    console.log(response.data);
 })
 .catch(error => {
-    console.error('Erro ao registar os comandos:', error.response ? error.response.data : error.message);
+    console.error('Erro ao registar os comandos:', error.response ? error.response.data.errors : error.message);
 });

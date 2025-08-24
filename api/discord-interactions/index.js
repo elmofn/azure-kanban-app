@@ -1,68 +1,110 @@
 const { InteractionType, InteractionResponseType, verifyKey } = require('discord-interactions');
+const { CosmosClient } = require("@azure/cosmos");
 
-// O Azure Functions v4 analisa o corpo do pedido (body) automaticamente.
-// Para a verificação da assinatura funcionar, precisamos do corpo como texto simples.
-// O `req.rawBody` deveria funcionar, mas por vezes não é fiável.
-// Vamos usar o `req.body` e convertê-lo de volta para uma string JSON consistente.
+// --- Configuração do Cosmos DB ---
+const connectionString = process.env.CosmosDB;
+const client = new CosmosClient(connectionString);
+const database = client.database("TasksDB");
+const container = database.container("Tasks");
+
 function getRequestRawBody(req) {
-    // Se o rawBody existir e tiver conteúdo, use-o (melhor opção)
-    if (req.rawBody && req.rawBody.length > 0) {
-        return req.rawBody;
-    }
-    // Se não, converta o corpo JSON analisado de volta para uma string.
-    // É crucial que a string seja exatamente como o Discord a enviou.
+    if (req.rawBody && req.rawBody.length > 0) return req.rawBody;
     return JSON.stringify(req.body);
 }
 
+// --- Função Principal ---
 module.exports = async function (context, req) {
+    // Verificação de segurança
     const signature = req.headers['x-signature-ed25519'];
     const timestamp = req.headers['x-signature-timestamp'];
     const rawBody = getRequestRawBody(req);
     const publicKey = process.env.DISCORD_PUBLIC_KEY;
 
-    if (!publicKey || !signature || !timestamp) {
-        context.log.warn('Cabeçalhos de verificação em falta.');
-        context.res = { status: 400, body: 'Cabeçalhos de verificação em falta.' };
+    const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
+    if (!isValidRequest) {
+        context.res = { status: 401, body: 'Assinatura inválida.' };
         return;
     }
 
-    try {
-        const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
+    const interaction = req.body;
 
-        if (!isValidRequest) {
-            context.log.warn('Assinatura inválida. Acesso negado.');
-            // O Discord espera um 401 para falhas de autorização.
-            context.res = { status: 401, body: 'Assinatura inválida.' };
-            return;
-        }
+    // Responder ao PING de verificação do Discord
+    if (interaction.type === InteractionType.PING) {
+        context.res = {
+            headers: { 'Content-Type': 'application/json' },
+            body: { type: InteractionResponseType.PONG }
+        };
+        return;
+    }
 
-        const interaction = req.body;
+    // Processar um comando
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+        // Adia a resposta IMEDIATAMENTE para evitar o timeout de 3 segundos
+        context.res = {
+            headers: { 'Content-Type': 'application/json' },
+            body: { type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE }
+        };
 
-        if (interaction.type === InteractionType.PING) {
-            context.log('É um PING. A responder com PONG.');
-            context.res = {
-                // A resposta para um PING tem de ser enviada diretamente no corpo (body).
+        // Agora, podemos demorar o tempo que for preciso para processar o comando
+        try {
+            const commandName = interaction.data.name;
+            let responseContent;
+
+            if (commandName === 'ping') {
+                responseContent = 'Pong! A ligação está perfeita.';
+            } else if (commandName === 'novatarefa') {
+                responseContent = await handleCreateTask(interaction);
+            } else {
+                responseContent = 'Comando desconhecido.';
+            }
+
+            // Envia a resposta final editando a mensagem "is thinking..."
+            const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
+            await fetch(followUpUrl, {
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: { type: InteractionResponseType.PONG }
-            };
-            return;
-        }
+                body: JSON.stringify({ content: responseContent }),
+            });
 
-        // Se for um comando, damos uma resposta temporária.
-        if (interaction.type === InteractionType.APPLICATION_COMMAND) {
-            context.log(`Comando '${interaction.data.name}' recebido.`);
-            context.res = {
+        } catch (error) {
+            context.log.error('Erro ao executar o comando:', error);
+            const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
+            await fetch(followUpUrl, {
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: {
-                    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-                    data: { content: 'O comando foi recebido!' },
-                }
-            };
-            return;
+                body: JSON.stringify({ content: '❌ Ocorreu um erro ao processar o seu comando.' }),
+            });
         }
-
-    } catch (err) {
-        context.log.error('Ocorreu um erro inesperado durante a verificação:', err);
-        context.res = { status: 500, body: 'Erro interno no servidor.' };
     }
 };
+
+// --- Lógica do Comando /novatarefa ---
+async function handleCreateTask(interaction) {
+    const options = interaction.data.options;
+    const title = options.find(opt => opt.name === 'titulo').value;
+    const description = options.find(opt => opt.name === 'descricao').value;
+    const project = options.find(opt => opt.name === 'projeto')?.value || '';
+    const discordUser = interaction.member.user;
+
+    const operations = [{ op: 'incr', path: '/currentId', value: 1 }];
+    const { resource: updatedCounter } = await container.item("taskCounter", "taskCounter").patch(operations);
+    const newTaskId = `TC-${String(updatedCounter.currentId).padStart(3, '0')}`;
+    
+    const newTask = {
+        id: newTaskId,
+        numericId: updatedCounter.currentId,
+        title: title,
+        description: description,
+        responsible: [{ name: 'DEFINIR', email: '', picture: '' }],
+        project: project,
+        projectColor: '#9DB2BF',
+        status: 'todo',
+        createdAt: new Date().toISOString(),
+        createdBy: `${discordUser.username}`,
+        history: [{ status: 'todo', timestamp: new Date().toISOString() }],
+        order: -Date.now()
+    };
+    
+    await container.items.create(newTask);
+    return `✅ Tarefa **${newTask.id}: ${newTask.title}** criada com sucesso!`;
+}
