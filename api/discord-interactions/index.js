@@ -14,7 +14,6 @@ function getRequestRawBody(req) {
 
 // --- Função Principal ---
 module.exports = async function (context, req) {
-    // Verificação de segurança
     const signature = req.headers['x-signature-ed25519'];
     const timestamp = req.headers['x-signature-timestamp'];
     const rawBody = getRequestRawBody(req);
@@ -28,7 +27,6 @@ module.exports = async function (context, req) {
 
     const interaction = req.body;
 
-    // Responder ao PING de verificação do Discord
     if (interaction.type === InteractionType.PING) {
         context.res = {
             headers: { 'Content-Type': 'application/json' },
@@ -37,15 +35,12 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // Processar um comando
     if (interaction.type === InteractionType.APPLICATION_COMMAND) {
-        // Adia a resposta IMEDIATAMENTE para evitar o timeout de 3 segundos
         context.res = {
             headers: { 'Content-Type': 'application/json' },
             body: { type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE }
         };
 
-        // Agora, podemos demorar o tempo que for preciso para processar o comando
         try {
             const commandName = interaction.data.name;
             let responseContent;
@@ -58,7 +53,6 @@ module.exports = async function (context, req) {
                 responseContent = 'Comando desconhecido.';
             }
 
-            // Envia a resposta final editando a mensagem "is thinking..."
             const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
             await fetch(followUpUrl, {
                 method: 'PATCH',
@@ -90,19 +84,24 @@ async function handleCreateTask(interaction) {
     const { resource: updatedCounter } = await container.item("taskCounter", "taskCounter").patch(operations);
     const newTaskId = `TC-${String(updatedCounter.currentId).padStart(3, '0')}`;
     
+    // **NOVO OBJETO COMPLETO, IGUAL AO DA APLICAÇÃO PRINCIPAL**
     const newTask = {
         id: newTaskId,
         numericId: updatedCounter.currentId,
         title: title,
         description: description,
         responsible: [{ name: 'DEFINIR', email: '', picture: '' }],
+        azureLink: '',
         project: project,
-        projectColor: '#9DB2BF',
+        projectColor: '#526D82', // Cor padrão
+        priority: 'Média',
         status: 'todo',
         createdAt: new Date().toISOString(),
         createdBy: `${discordUser.username}`,
         history: [{ status: 'todo', timestamp: new Date().toISOString() }],
-        order: -Date.now()
+        order: -Date.now(),
+        dueDate: null,
+        attachments: []
     };
     
     await container.items.create(newTask);
