@@ -27,31 +27,35 @@ module.exports = async function (context, req) {
 
     const interaction = req.body;
 
-    // Lidar com o novo evento de Autocomplete
+    // Lidar com eventos de Autocomplete
     if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
         const focusedOption = interaction.data.options.find(opt => opt.focused);
-        
+        let choices = [];
+
+        // Autocomplete para Projetos
         if (focusedOption.name === 'projeto') {
-            // Obter os projetos existentes da base de dados
             const { resources: tasks } = await tasksContainer.items.query("SELECT DISTINCT c.project FROM c WHERE c.project != null AND c.project != ''").fetchAll();
             const allProjects = [...new Set(tasks.map(t => t.project))];
-
-            // Filtrar os projetos com base no que o utilizador digitou
-            const filteredProjects = allProjects
+            choices = allProjects
                 .filter(p => p.toLowerCase().startsWith(focusedOption.value.toLowerCase()))
-                .slice(0, 25); // O Discord tem um limite de 25 opções
-
-            context.res = {
-                headers: { 'Content-Type': 'application/json' },
-                body: {
-                    type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-                    data: {
-                        choices: filteredProjects.map(p => ({ name: p, value: p })),
-                    }
-                }
-            };
+                .map(p => ({ name: p, value: p }));
         }
-        return;
+
+        // Autocomplete para Responsáveis
+        if (focusedOption.name === 'responsavel') {
+            const { resources: users } = await usersContainer.items.readAll().fetchAll();
+            choices = users
+                .filter(u => u.name.toLowerCase().includes(focusedOption.value.toLowerCase()) && u.name !== 'DEFINIR')
+                .map(u => ({ name: u.name, value: u.name }));
+        }
+
+        return {
+            headers: { 'Content-Type': 'application/json' },
+            body: {
+                type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+                data: { choices: choices.slice(0, 25) }
+            }
+        };
     }
 
     if (interaction.type === InteractionType.PING) {
@@ -95,18 +99,23 @@ module.exports = async function (context, req) {
     }
 };
 
-// --- Lógica do Comando /novatarefa atualizada ---
+// --- Lógica do Comando /novatarefa corrigida ---
 async function handleCreateTask(interaction) {
     const options = interaction.data.options;
     const title = options.find(opt => opt.name === 'titulo').value;
     const description = options.find(opt => opt.name === 'descricao').value;
-    const responsibleUserId = options.find(opt => opt.name === 'responsavel').value;
+    const responsibleName = options.find(opt => opt.name === 'responsavel').value;
     const project = options.find(opt => opt.name === 'projeto')?.value || '';
     const discordUser = interaction.member.user;
 
-    // Encontrar o utilizador correspondente na nossa base de dados
+    // Encontrar o utilizador correspondente na nossa base de dados pelo nome exato
     const { resources: allUsers } = await usersContainer.items.readAll().fetchAll();
-    const responsibleUser = allUsers.find(u => u.name.toLowerCase().includes(interaction.data.resolved.users[responsibleUserId].username.toLowerCase()));
+    const responsibleUser = allUsers.find(u => u.name === responsibleName);
+
+    // Se o utilizador não for encontrado no nosso quadro, não criamos a tarefa
+    if (!responsibleUser) {
+        return `❌ Não foi possível encontrar o responsável "${responsibleName}" no quadro de tarefas. Por favor, selecione um utilizador da lista.`;
+    }
 
     const operations = [{ op: 'incr', path: '/currentId', value: 1 }];
     const { resource: updatedCounter } = await container.item("taskCounter", "taskCounter").patch(operations);
@@ -117,7 +126,7 @@ async function handleCreateTask(interaction) {
         numericId: updatedCounter.currentId,
         title: title,
         description: description,
-        responsible: responsibleUser ? [responsibleUser] : [{ name: 'DEFINIR', email: '', picture: '' }],
+        responsible: [responsibleUser], // Usar o objeto completo do utilizador
         azureLink: '',
         project: project,
         projectColor: '#526D82',
@@ -132,5 +141,5 @@ async function handleCreateTask(interaction) {
     };
     
     await container.items.create(newTask);
-    return `✅ Tarefa **${newTask.id}: ${newTask.title}** criada e atribuída a **${responsibleUser ? responsibleUser.name : 'DEFINIR'}**!`;
+    return `✅ Tarefa **${newTask.id}: ${newTask.title}** criada e atribuída a **${responsibleUser.name}**!`;
 }

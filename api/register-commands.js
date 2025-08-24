@@ -21,7 +21,7 @@ const commands = [
             {
                 name: 'titulo',
                 description: 'O título da nova tarefa.',
-                type: 3, // 3 = String
+                type: 3, // String
                 required: true,
             },
             {
@@ -32,16 +32,17 @@ const commands = [
             },
             {
                 name: 'responsavel',
-                description: 'A quem a tarefa deve ser atribuída.',
-                type: 6, // 6 = USER
+                description: 'A quem a tarefa deve ser atribuída (comece a digitar para ver as opções).',
+                type: 3, // String, mudado de USER para STRING
                 required: true,
+                autocomplete: true, // Adicionado autocomplete
             },
             {
                 name: 'projeto',
                 description: 'O projeto ao qual a tarefa pertence (comece a digitar para ver as opções).',
                 type: 3, // String
                 required: false,
-                autocomplete: true, // A magia acontece aqui!
+                autocomplete: true,
             }
         ],
     }
