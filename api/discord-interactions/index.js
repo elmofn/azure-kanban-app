@@ -1,7 +1,6 @@
 const { InteractionType, InteractionResponseType, verifyKey } = require('discord-interactions');
 const { CosmosClient } = require("@azure/cosmos");
 
-// --- Configuração do Cosmos DB ---
 const connectionString = process.env.CosmosDB;
 const client = new CosmosClient(connectionString);
 const database = client.database("TasksDB");
@@ -12,27 +11,27 @@ function getRequestRawBody(req) {
     return JSON.stringify(req.body);
 }
 
-// --- Função Principal ---
 module.exports = async function (context, req) {
     const signature = req.headers['x-signature-ed25519'];
     const timestamp = req.headers['x-signature-timestamp'];
     const rawBody = getRequestRawBody(req);
     const publicKey = process.env.DISCORD_PUBLIC_KEY;
+    const appId = process.env.DISCORD_APP_ID; // Adicionado para verificação
+
+    // Log de diagnóstico para as variáveis de ambiente
+    if (!appId) {
+        context.log.error("ERRO: A variável de ambiente DISCORD_APP_ID está em falta!");
+    }
 
     const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
     if (!isValidRequest) {
-        context.res = { status: 401, body: 'Assinatura inválida.' };
-        return;
+        return { status: 401, body: 'Assinatura inválida.' };
     }
 
     const interaction = req.body;
 
     if (interaction.type === InteractionType.PING) {
-        context.res = {
-            headers: { 'Content-Type': 'application/json' },
-            body: { type: InteractionResponseType.PONG }
-        };
-        return;
+        return { headers: { 'Content-Type': 'application/json' }, body: { type: InteractionResponseType.PONG }};
     }
 
     if (interaction.type === InteractionType.APPLICATION_COMMAND) {
@@ -45,34 +44,33 @@ module.exports = async function (context, req) {
             const commandName = interaction.data.name;
             let responseContent;
 
-            if (commandName === 'ping') {
-                responseContent = 'Pong! A ligação está perfeita.';
-            } else if (commandName === 'novatarefa') {
+            if (commandName === 'novatarefa') {
                 responseContent = await handleCreateTask(interaction);
             } else {
                 responseContent = 'Comando desconhecido.';
             }
 
-            const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
-            await fetch(followUpUrl, {
+            const followUpUrl = `https://discord.com/api/v10/webhooks/${appId}/${interaction.token}/messages/@original`;
+            context.log(`A enviar a resposta final para: ${followUpUrl}`); // Log do URL
+
+            const response = await fetch(followUpUrl, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: responseContent }),
             });
 
+            if (!response.ok) {
+                context.log.error(`Erro ao enviar a resposta final para o Discord: ${response.status}`, await response.json());
+            } else {
+                context.log('Resposta final enviada com sucesso.');
+            }
+
         } catch (error) {
-            context.log.error('Erro ao executar o comando:', error);
-            const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
-            await fetch(followUpUrl, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: '❌ Ocorreu um erro ao processar o seu comando.' }),
-            });
+            context.log.error('Erro geral ao executar o comando:', error);
         }
     }
 };
 
-// --- Lógica do Comando /novatarefa ---
 async function handleCreateTask(interaction) {
     const options = interaction.data.options;
     const title = options.find(opt => opt.name === 'titulo').value;
@@ -84,7 +82,6 @@ async function handleCreateTask(interaction) {
     const { resource: updatedCounter } = await container.item("taskCounter", "taskCounter").patch(operations);
     const newTaskId = `TC-${String(updatedCounter.currentId).padStart(3, '0')}`;
     
-    // **NOVO OBJETO COMPLETO, IGUAL AO DA APLICAÇÃO PRINCIPAL**
     const newTask = {
         id: newTaskId,
         numericId: updatedCounter.currentId,
@@ -93,7 +90,7 @@ async function handleCreateTask(interaction) {
         responsible: [{ name: 'DEFINIR', email: '', picture: '' }],
         azureLink: '',
         project: project,
-        projectColor: '#526D82', // Cor padrão
+        projectColor: '#526D82',
         priority: 'Média',
         status: 'todo',
         createdAt: new Date().toISOString(),
