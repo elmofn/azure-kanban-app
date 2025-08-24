@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './.env' }); 
+require('dotenv').config({ path: './.env' });
 const axios = require('axios');
 
 const appId = process.env.DISCORD_APP_ID;
@@ -27,14 +27,21 @@ const commands = [
             {
                 name: 'descricao',
                 description: 'A descrição detalhada da tarefa.',
-                type: 3, // 3 = String
+                type: 3, // String
+                required: true,
+            },
+            {
+                name: 'responsavel',
+                description: 'A quem a tarefa deve ser atribuída.',
+                type: 6, // 6 = USER
                 required: true,
             },
             {
                 name: 'projeto',
-                description: 'O nome do projeto ao qual a tarefa pertence.',
-                type: 3,
+                description: 'O projeto ao qual a tarefa pertence (comece a digitar para ver as opções).',
+                type: 3, // String
                 required: false,
+                autocomplete: true, // A magia acontece aqui!
             }
         ],
     }
