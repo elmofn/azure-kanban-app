@@ -5,7 +5,7 @@ const { CosmosClient } = require("@azure/cosmos");
 const connectionString = process.env.CosmosDB;
 const client = new CosmosClient(connectionString);
 const database = client.database("TasksDB");
-const tasksContainer = database.container("Tasks");
+const tasksContainer = database.container("Tasks"); // Nome correto da variável
 const usersContainer = database.container("Users");
 
 function getRequestRawBody(req) {
@@ -85,7 +85,7 @@ module.exports = async function (context, req) {
             if (commandName === 'ping') {
                 responsePayload = { content: 'Pong! A ligação está perfeita.' };
             } else if (commandName === 'novatarefa') {
-                responsePayload = await handleCreateTask(interaction);
+                responsePayload = await handleCreateTask(interaction, context); // Passar o context para os logs
             } else {
                 responsePayload = { content: 'Comando desconhecido.' };
             }
@@ -109,8 +109,8 @@ module.exports = async function (context, req) {
     }
 };
 
-// --- Lógica do Comando /novatarefa com resposta em Embed ---
-async function handleCreateTask(interaction) {
+// --- Lógica do Comando /novatarefa corrigida ---
+async function handleCreateTask(interaction, context) {
     const options = interaction.data.options;
     const title = options.find(opt => opt.name === 'titulo').value;
     const description = options.find(opt => opt.name === 'descricao').value;
@@ -122,11 +122,13 @@ async function handleCreateTask(interaction) {
     const responsibleUser = allUsers.find(u => u.name === responsibleName);
 
     if (!responsibleUser) {
+        context.log.warn(`Responsável "${responsibleName}" não encontrado na base de dados.`);
         return { content: `❌ Não foi possível encontrar o responsável "${responsibleName}" no quadro de tarefas. Por favor, selecione um utilizador da lista.` };
     }
 
+    // **A CORREÇÃO ESTÁ AQUI:** Usar `tasksContainer` em vez de `container`
     const operations = [{ op: 'incr', path: '/currentId', value: 1 }];
-    const { resource: updatedCounter } = await container.item("taskCounter", "taskCounter").patch(operations);
+    const { resource: updatedCounter } = await tasksContainer.item("taskCounter", "taskCounter").patch(operations);
     const newTaskId = `TC-${String(updatedCounter.currentId).padStart(3, '0')}`;
     
     const newTask = {
@@ -149,6 +151,7 @@ async function handleCreateTask(interaction) {
     };
     
     await tasksContainer.items.create(newTask);
+    context.log(`Tarefa ${newTask.id} criada com sucesso.`);
 
     // Constrói a resposta final com um Embed
     return {
@@ -157,15 +160,13 @@ async function handleCreateTask(interaction) {
             {
                 title: `[${newTask.id}] ${newTask.title}`,
                 description: newTask.description,
-                color: parseInt("526D82", 16), // Cor do embed
+                color: parseInt("526D82", 16),
                 fields: [
                     { name: "Projeto", value: newTask.project, inline: true },
                     { name: "Responsável", value: responsibleUser.name, inline: true },
                     { name: "Prioridade", value: newTask.priority, inline: true },
                 ],
-                footer: {
-                    text: `Criado por: ${discordUser.username}`
-                },
+                footer: { text: `Criado por: ${discordUser.username}` },
                 timestamp: new Date().toISOString()
             }
         ]
