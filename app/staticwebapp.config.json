@@ -29,6 +29,11 @@
       "redirect": "/.auth/logout"
     },
     {
+      "route": "/api/discord-interactions",
+      "methods": ["POST"],
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
       "route": "/*",
       "allowedRoles": [
         "travelcash_user"
