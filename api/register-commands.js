@@ -33,9 +33,9 @@ const commands = [
             {
                 name: 'responsavel',
                 description: 'A quem a tarefa deve ser atribuída (comece a digitar para ver as opções).',
-                type: 3, // String, mudado de USER para STRING
+                type: 3, // String
                 required: true,
-                autocomplete: true, // Adicionado autocomplete
+                autocomplete: true,
             },
             {
                 name: 'projeto',
