@@ -27,7 +27,7 @@ module.exports = async function (context, req) {
 
     const interaction = req.body;
 
-    // --- Lógica de Autocomplete (Mantida igual) ---
+    // --- Lógica de Autocomplete (Mantida) ---
     if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
         const focusedOption = interaction.data.options.find(opt => opt.focused);
         let choices = [];
@@ -73,15 +73,17 @@ module.exports = async function (context, req) {
         return { headers: { 'Content-Type': 'application/json' }, body: { type: InteractionResponseType.PONG }};
     }
 
-    // --- Lógica de Comandos (CORRIGIDA) ---
+    // --- Lógica de Comandos ---
     if (interaction.type === InteractionType.APPLICATION_COMMAND) {
         try {
             const commandName = interaction.data.name;
             let responsePayload;
 
-            // Executa a lógica PRIMEIRO
+            // Processa a lógica de cada comando
             if (commandName === 'ping') {
                 responsePayload = { content: 'Pong! A ligação está perfeita.' };
+            } else if (commandName === 'taquasepronto') {
+                responsePayload = { content: 'Tu disse que precisava de mais 2 horas pra terminar e depois de dois dias tu diz que ta quase pronto?????????????' };
             } else if (commandName === 'novatarefa') {
                 responsePayload = await handleCreateTask(interaction, context);
             } else {
@@ -110,7 +112,7 @@ module.exports = async function (context, req) {
     }
 };
 
-// --- Funções Auxiliares (Mantidas iguais) ---
+// --- Função Auxiliar handleCreateTask (Mantida) ---
 async function handleCreateTask(interaction, context) {
     const options = interaction.data.options;
     const title = options.find(opt => opt.name === 'titulo').value;

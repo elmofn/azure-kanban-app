@@ -15,6 +15,10 @@ const commands = [
         description: 'Verifica se o bot está a responder.',
     },
     {
+        name: 'taquasepronto',
+        description: 'Envia uma mensagem de cobrança sobre prazos.',
+    },
+    {
         name: 'novatarefa',
         description: 'Cria uma nova tarefa no quadro SyncBoard.',
         options: [
