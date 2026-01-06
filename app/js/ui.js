@@ -71,7 +71,7 @@ function renderAttachmentList(containerId, attachments) {
             const fileName = isLocalFile ? file.name : (file.name || 'arquivo');
             const fileSize = isLocalFile ? `${(file.size / 1024).toFixed(1)} KB` : '';
             
-            const blobName = !isLocalFile && file.url ? file.url.split('/').pop() : '';
+            const blobName = !isLocalFile && file.url ? decodeURIComponent(file.url.split('/').pop()) : '';
 
             const item = document.createElement('div');
             item.className = 'attachment-item bg-custom-light/60 dark:bg-custom-dark/40 p-2 rounded-md flex items-center justify-between';
