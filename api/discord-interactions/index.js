@@ -5,7 +5,7 @@ const { CosmosClient } = require("@azure/cosmos");
 const connectionString = process.env.CosmosDB;
 const client = new CosmosClient(connectionString);
 const database = client.database("TasksDB");
-const tasksContainer = database.container("Tasks"); // Nome correto da variável
+const tasksContainer = database.container("Tasks"); 
 const usersContainer = database.container("Users");
 
 function getRequestRawBody(req) {
@@ -27,6 +27,7 @@ module.exports = async function (context, req) {
 
     const interaction = req.body;
 
+    // --- Lógica de Autocomplete (Mantida igual) ---
     if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
         const focusedOption = interaction.data.options.find(opt => opt.focused);
         let choices = [];
@@ -72,44 +73,44 @@ module.exports = async function (context, req) {
         return { headers: { 'Content-Type': 'application/json' }, body: { type: InteractionResponseType.PONG }};
     }
 
+    // --- Lógica de Comandos (CORRIGIDA) ---
     if (interaction.type === InteractionType.APPLICATION_COMMAND) {
-        context.res = {
-            headers: { 'Content-Type': 'application/json' },
-            body: { type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE }
-        };
-
         try {
             const commandName = interaction.data.name;
             let responsePayload;
 
+            // Executa a lógica PRIMEIRO
             if (commandName === 'ping') {
                 responsePayload = { content: 'Pong! A ligação está perfeita.' };
             } else if (commandName === 'novatarefa') {
-                responsePayload = await handleCreateTask(interaction, context); // Passar o context para os logs
+                responsePayload = await handleCreateTask(interaction, context);
             } else {
                 responsePayload = { content: 'Comando desconhecido.' };
             }
 
-            const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
-            await fetch(followUpUrl, {
-                method: 'PATCH',
+            // Envia a resposta final DIRETAMENTE (Tipo 4)
+            context.res = {
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(responsePayload),
-            });
+                body: {
+                    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                    data: responsePayload
+                }
+            };
 
         } catch (error) {
             context.log.error('Erro ao executar o comando:', error);
-            const followUpUrl = `https://discord.com/api/v10/webhooks/${process.env.DISCORD_APP_ID}/${interaction.token}/messages/@original`;
-            await fetch(followUpUrl, {
-                method: 'PATCH',
+            context.res = {
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: '❌ Ocorreu um erro ao processar o seu comando.' }),
-            });
+                body: {
+                    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                    data: { content: '❌ Ocorreu um erro ao processar o seu comando.' }
+                }
+            };
         }
     }
 };
 
-// --- Lógica do Comando /novatarefa corrigida ---
+// --- Funções Auxiliares (Mantidas iguais) ---
 async function handleCreateTask(interaction, context) {
     const options = interaction.data.options;
     const title = options.find(opt => opt.name === 'titulo').value;
@@ -126,7 +127,6 @@ async function handleCreateTask(interaction, context) {
         return { content: `❌ Não foi possível encontrar o responsável "${responsibleName}" no quadro de tarefas. Por favor, selecione um utilizador da lista.` };
     }
 
-    // **A CORREÇÃO ESTÁ AQUI:** Usar `tasksContainer` em vez de `container`
     const operations = [{ op: 'incr', path: '/currentId', value: 1 }];
     const { resource: updatedCounter } = await tasksContainer.item("taskCounter", "taskCounter").patch(operations);
     const newTaskId = `TC-${String(updatedCounter.currentId).padStart(3, '0')}`;
@@ -153,7 +153,6 @@ async function handleCreateTask(interaction, context) {
     await tasksContainer.items.create(newTask);
     context.log(`Tarefa ${newTask.id} criada com sucesso.`);
 
-    // Constrói a resposta final com um Embed
     return {
         content: `✅ Tarefa **${newTask.id}** criada com sucesso!`,
         embeds: [
