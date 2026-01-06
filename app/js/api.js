@@ -132,3 +132,15 @@ export async function addUser(userPayload) {
     }
     return await response.json();
 }
+
+export async function deleteUser(userId) {
+    // O userId é o email, por isso devemos usar encodeURIComponent para garantir que caracteres como '@' passam corretamente na URL
+    const response = await fetch(`/api/deleteUser/${encodeURIComponent(userId)}`, { 
+        method: 'DELETE' 
+    });
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Falha ao eliminar o utilizador.');
+    }
+}

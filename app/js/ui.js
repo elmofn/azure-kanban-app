@@ -680,6 +680,7 @@ export function setupCustomColorPicker() {
 
 export function renderUserManagementView() {
     const userManagementViewEl = document.getElementById('userManagementView');
+    // Filtramos o utilizador 'DEFINIR' para não aparecer na gestão
     const allUsers = state.users.filter(u => u.name !== 'DEFINIR');
 
     const userRows = allUsers.map(user => `
@@ -694,7 +695,12 @@ export function renderUserManagementView() {
                 </div>
             </td>
             <td class="px-4 py-3">
-                ${user.isAdmin ? '<span class="text-xs font-semibold rounded-full px-2.5 py-1 bg-purple-200 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">Admin</span>' : ''}
+                ${user.isAdmin ? '<span class="text-xs font-semibold rounded-full px-2.5 py-1 bg-purple-200 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">Admin</span>' : '<span class="text-xs text-gray-500">Utilizador</span>'}
+            </td>
+            <td class="px-4 py-3 text-right">
+                <button class="delete-user-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1.5 rounded-full transition-colors" data-user-id="${user.id || user.email}" title="Eliminar Utilizador">
+                    <i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i>
+                </button>
             </td>
         </tr>
     `).join('');
@@ -702,13 +708,14 @@ export function renderUserManagementView() {
     userManagementViewEl.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-2">
-                <h2 class="text-2xl font-bold mb-4">Utilizadores Cadastrados</h2>
+                <h2 class="text-2xl font-bold mb-4 text-custom-darkest dark:text-custom-light">Utilizadores Cadastrados</h2>
                 <div class="bg-base-white dark:bg-custom-darkest/40 rounded-lg shadow-sm overflow-hidden">
                     <table class="min-w-full">
                         <thead class="bg-custom-light/50 dark:bg-custom-darkest/60">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Utilizador</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Permissões</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-custom-dark dark:text-custom-light uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-custom-light dark:divide-custom-dark">
@@ -718,21 +725,21 @@ export function renderUserManagementView() {
                 </div>
             </div>
             <div>
-                <h2 class="text-2xl font-bold mb-4">Adicionar Novo Utilizador</h2>
+                <h2 class="text-2xl font-bold mb-4 text-custom-darkest dark:text-custom-light">Adicionar Novo Utilizador</h2>
                 <form id="addUserForm" class="bg-base-white dark:bg-custom-darkest/40 rounded-lg shadow-sm p-6 space-y-4">
                     <div>
-                        <label for="newUserName" class="block text-sm font-bold mb-2">Nome Completo</label>
-                        <input type="text" id="newUserName" required class="w-full bg-transparent border border-custom-medium dark:border-custom-dark rounded-lg py-2 px-3 focus:ring-2 focus:ring-custom-dark">
+                        <label for="newUserName" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Nome Completo</label>
+                        <input type="text" id="newUserName" required class="w-full bg-transparent border border-custom-medium dark:border-custom-dark rounded-lg py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:outline-none">
                     </div>
                     <div>
-                        <label for="newUserEmail" class="block text-sm font-bold mb-2">E-mail (@travelcash.me)</label>
-                        <input type="email" id="newUserEmail" required class="w-full bg-transparent border border-custom-medium dark:border-custom-dark rounded-lg py-2 px-3 focus:ring-2 focus:ring-custom-dark">
+                        <label for="newUserEmail" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">E-mail (@travelcash.me)</label>
+                        <input type="email" id="newUserEmail" required class="w-full bg-transparent border border-custom-medium dark:border-custom-dark rounded-lg py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="checkbox" id="newUserIsAdmin" class="h-4 w-4 rounded border-gray-300 text-custom-dark focus:ring-custom-dark">
-                        <label for="newUserIsAdmin" class="text-sm font-medium">Conceder permissões de Administrador</label>
+                        <label for="newUserIsAdmin" class="text-sm font-medium text-custom-darkest dark:text-custom-light">Conceder permissões de Administrador</label>
                     </div>
-                    <button type="submit" class="w-full bg-custom-darkest hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg">Adicionar Utilizador</button>
+                    <button type="submit" class="w-full bg-custom-darkest hover:bg-opacity-90 dark:bg-custom-light dark:text-custom-darkest dark:hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar Utilizador</button>
                 </form>
             </div>
         </div>

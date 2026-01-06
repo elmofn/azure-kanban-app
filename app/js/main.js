@@ -494,6 +494,38 @@ function initializeEventListeners() {
                 }
             );
         }
+        const deleteUserBtn = e.target.closest('.delete-user-btn');
+        if (deleteUserBtn) {
+            const userId = deleteUserBtn.dataset.userId;
+            
+            // Encontrar o nome do utilizador para mostrar na mensagem
+            const user = state.users.find(u => u.id === userId || u.email === userId);
+            const userName = user ? user.name : userId;
+
+            showConfirmModal(
+                'Eliminar Utilizador',
+                `Tem a certeza de que deseja remover o acesso de "${userName}"?`,
+                async () => {
+                    try {
+                        await api.deleteUser(userId);
+                        
+                        // Atualizar o estado local removendo o utilizador
+                        state.users = state.users.filter(u => u.id !== userId && u.email !== userId);
+                        
+                        // Atualizar a UI
+                        ui.renderUserManagementView();
+                        ui.showToast('Utilizador removido com sucesso.', 'info');
+                        
+                        // Opcional: Atualizar filtros de responsáveis se necessário
+                        ui.populateResponsibleFilter(); 
+                        
+                    } catch (error) {
+                        console.error("Erro ao eliminar utilizador:", error);
+                        ui.showToast(error.message || 'Falha ao eliminar utilizador.', 'error');
+                    }
+                }
+            );
+        }
     });
 }
 
