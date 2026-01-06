@@ -255,6 +255,7 @@ function initializeEventListeners() {
         ui.renderModalAttachments(localFiles);
 
         document.getElementById('color-picker-button').style.backgroundColor = '#526D82';
+        document.getElementById('status-container').classList.add('hidden');
         
         ui.setupResponsibleInput([]);
         
@@ -316,6 +317,7 @@ function initializeEventListeners() {
                 dueDate: dueDateISO,
                 azureLink: document.getElementById('taskAzureLink').value,
                 attachments: uploadedAttachments,
+                status: state.editingTaskId ? document.getElementById('taskStatus').value : 'todo'
             };
             
             const isEditing = !!state.editingTaskId;
@@ -343,6 +345,12 @@ function initializeEventListeners() {
         const taskId = state.lastInteractedTaskId;
         const taskToEdit = state.tasks.find(t => t.id === taskId);
         if (!taskToEdit) return;
+        const statusContainer = document.getElementById('status-container');
+        const statusInput = document.getElementById('taskStatus');
+        
+        statusContainer.classList.remove('hidden');
+        statusInput.value = taskToEdit.status || 'todo';
+
         state.editingTaskId = taskId;
         document.getElementById('modalTitle').textContent = 'Editar Tarefa';
         document.getElementById('taskTitle').value = taskToEdit.title || '';

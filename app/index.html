@@ -171,6 +171,15 @@
                         </div>
                         <div id="responsible-suggestions" class="absolute z-20 w-full bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md mt-1 hidden shadow-lg max-h-40 overflow-y-auto"></div>
                     </div>
+                    <div id="status-container" class="hidden"> <label for="taskStatus" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Status Atual</label>
+                        <select id="taskStatus" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark">
+                            <option value="todo">Fila</option>
+                            <option value="stopped">Parado</option>
+                            <option value="inprogress">Em Andamento</option>
+                            <option value="homologation">Homologação</option>
+                            <option value="done">Concluída</option>
+                        </select>
+                    </div>
                     <div>
                         <label for="taskPriority" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Prioridade</label>
                         <select id="taskPriority" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark">
