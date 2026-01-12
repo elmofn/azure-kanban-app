@@ -117,11 +117,8 @@ module.exports = async function (context, req) {
                 const sorteio = cobrancas[Math.floor(Math.random() * cobrancas.length)];
 
                 responsePayload = { 
-                    content: sorteio.msg,
-                    embeds: [{
-                        image: { url: sorteio.img },
-                        color: 0xFF0000 // Vermelho para destacar a urgência/raiva
-                    }]
+                    // O Discord vai ler o link do Tenor/Giphy e exibir o GIF automaticamente abaixo da frase.
+                    content: `${sorteio.msg}\n${sorteio.img}`
                 };
             } else if (commandName === 'novatarefa') {
                 responsePayload = await handleCreateTask(interaction, context);
