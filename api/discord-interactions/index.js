@@ -84,10 +84,49 @@ module.exports = async function (context, req) {
                 responsePayload = { content: 'Pong! A ligação está perfeita.' };
             } else if (commandName === 'taquasepronto') {
                 responsePayload = { content: 'Tu disse que precisava de mais 2 horas pra terminar e depois de dois dias tu diz que ta quase pronto?????????????' };
+            } else if (commandName === 'estamossoporti') {
+                const targetUserId = interaction.data.options.find(opt => opt.name === 'usuario').value;
+                
+                const cobrancas = [
+                    { 
+                        msg: `Estamos só por ti <@${targetUserId}>! Faz 84 anos que a gente tá aqui... se demorar mais, vou aposentar antes da reunião acabar.`, 
+                        img: "https://media.giphy.com/media/FoH28ucxZFJZu/giphy.gif" 
+                    },
+                    { 
+                        msg: `Estamos só por ti <@${targetUserId}>! Tu tá vindo de jegue ou a internet é discada mesmo? Acelera aí, meu consagrado.`, 
+                        img: "https://tenor.com/view/mr-bean-mrbean-bean-mr-bean-holiday-mr-bean-holiday-movie-gif-3228235746377647455" 
+                    },
+                    { 
+                        msg: `Cadê o alecrim dourado? Estamos só por ti <@${targetUserId}>! O mundo não gira ao teu redor, mas a reunião infelizmente sim.`, 
+                        img: "https://tenor.com/view/where-you-at-gif-21177622" 
+                    },
+                    { 
+                        msg: `Estamos só por ti <@${targetUserId}>... Minha juventude tá indo embora e eu continuo aqui, parado, olhando pro nada.`, 
+                        img: "https://tenor.com/view/skeleton-forever-waiting-deep-thoughts-gif-19415492" 
+                    },
+                    { 
+                        msg: `Olha, <@${targetUserId}>, estamos só por ti. A gente até começava sem você, mas aí quem é que a gente ia culpar se desse errado?`, 
+                        img: "https://tenor.com/view/gjirlfriend-gif-14457952604098199169" 
+                    },
+                    { 
+                        msg: `Estamos só por ti <@${targetUserId}>! Tá escondido onde? No backlog das tarefas que tu nunca entregou?`, 
+                        img: "https://tenor.com/view/teletubbies-laa-laa-looking-around-where-are-you-search-gif-15574368096023879998" 
+                    }
+                ];
+
+                const sorteio = cobrancas[Math.floor(Math.random() * cobrancas.length)];
+
+                responsePayload = { 
+                    content: sorteio.msg,
+                    embeds: [{
+                        image: { url: sorteio.img },
+                        color: 0xFF0000 // Vermelho para destacar a urgência/raiva
+                    }]
+                };
             } else if (commandName === 'novatarefa') {
                 responsePayload = await handleCreateTask(interaction, context);
             } else {
-                responsePayload = { content: 'Comando desconhecido.' };
+                responsePayload = { content: 'Comando desconhecido.' };S
             }
 
             // Envia a resposta final DIRETAMENTE (Tipo 4)

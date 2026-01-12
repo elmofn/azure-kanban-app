@@ -19,6 +19,18 @@ const commands = [
         description: 'Envia uma mensagem de cobrança sobre prazos.',
     },
     {
+        name: 'estamossoporti',
+        description: 'Avisa alguém que a reunião está à espera dele.',
+        options: [
+            {
+                name: 'usuario',
+                description: 'Quem é que está atrasado?',
+                type: 6, // Tipo 6 = USER (permite selecionar um utilizador do Discord)
+                required: true,
+            }
+        ],
+    },
+    {
         name: 'novatarefa',
         description: 'Cria uma nova tarefa no quadro SyncBoard.',
         options: [
