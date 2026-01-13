@@ -448,6 +448,34 @@ export function renderTaskHistory(taskId) {
             return `<div class="flex items-start gap-3 group relative">${avatar}<div><p class="font-bold text-sm text-custom-darkest dark:text-custom-light">${authorName}</p><div class="bg-custom-light dark:bg-custom-dark/50 p-3 rounded-lg mt-1"><p class="text-sm text-custom-darkest dark:text-custom-light">${item.text}</p></div><p class="text-xs text-custom-dark dark:text-custom-medium mt-1">${formatDateTime(item.timestamp)}</p></div><button class="delete-comment-btn absolute top-0 right-0 p-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" data-task-id="${taskId}" data-comment-index="${item.index}" title="Excluir comentário"><i data-lucide="trash-2" class="w-3 h-3 pointer-events-none"></i></button></div>`;
         }
     }).join('');
+
+    // --- Logica do botão pra sinalizar tarefa ao responsável ---
+    const headerButtonsContainer = document.querySelector('#taskHistoryModal .flex.items-center.gap-2');
+    // Remove botão antigo se existir para não duplicar ao reabrir o modal
+    const oldSignalBtn = document.getElementById('signalBtn');
+    if(oldSignalBtn) oldSignalBtn.remove();
+
+    const signalBtn = document.createElement('button');
+    signalBtn.id = 'signalBtn';
+    signalBtn.className = 'p-2 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors';
+    signalBtn.title = 'Sinalizar Responsável (Enviar Alerta)';
+    signalBtn.innerHTML = '<i data-lucide="megaphone" class="w-5 h-5"></i>';
+    signalBtn.onclick = async () => {
+        try {
+            // Importação dinâmica para evitar referências circulares se necessário, ou use a importação global
+            await import('./api.js').then(module => module.signalResponsible(taskId));
+            showToast('Responsável sinalizado com sucesso!', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Erro ao sinalizar.', 'error');
+        }
+    };
+
+    // Insere o botão antes do botão de fechar
+    const closeBtn = document.getElementById('closeHistoryBtn');
+    if (headerButtonsContainer && closeBtn) {
+        headerButtonsContainer.insertBefore(signalBtn, closeBtn);
+    }
     
     document.getElementById('taskHistoryModal').classList.remove('hidden');
     lucide.createIcons();

@@ -16,7 +16,6 @@ export async function fetchTasks() {
     return await response.json();
 }
 
-// FUNÇÃO QUE ESTAVA EM FALTA
 export async function fetchUsers() {
     const response = await fetch('/api/getUsers');
     if (!response.ok) throw new Error('Falha ao buscar usuários.');
@@ -143,4 +142,20 @@ export async function deleteUser(userId) {
         const errorText = await response.text();
         throw new Error(errorText || 'Falha ao eliminar o utilizador.');
     }
+}
+
+export async function signalResponsible(taskId) {
+    const response = await fetch(`/api/signalResponsible/${taskId}`, {
+        method: 'POST'
+    });
+    if (!response.ok) throw new Error('Falha ao sinalizar responsável.');
+    return await response.json();
+}
+
+export async function dismissAlert(taskId) {
+    const response = await fetch(`/api/dismissAlert/${taskId}`, {
+        method: 'POST'
+    });
+    if (!response.ok) throw new Error('Falha ao dispensar alerta.');
+    return await response.json();
 }

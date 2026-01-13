@@ -7,6 +7,8 @@ import { connectToSignalR } from './signalr.js';
 let listSortableInstance = null;
 let kanbanSortableInstances = [];
 let localFiles = []; // Array para guardar objetos de arquivo (File ou {url, name})
+let alertQueue = [];
+let isAlertModalOpen = false;
 
 // --- PONTO DE ENTRADA DA APLICAÇÃO ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -40,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]);
         state.users = users;
         state.tasks = tasks;
+        checkAndQueueAlerts(state.tasks);
 
         // A inicialização dos event listeners só acontece depois de os dados estarem disponíveis
         initializeEventListeners();
@@ -54,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Passamos a função de atualização do drag-and-drop para o SignalR
         connectToSignalR(updateDragAndDropState);
+        checkAndQueueAlerts(state.tasks);
 
     } catch (error)
     {
@@ -613,4 +617,104 @@ function showConfirmModal(title, message, onConfirm, onCancel = null) {
         deleteConfirmModal.classList.add('hidden');
     };
     deleteConfirmModal.classList.remove('hidden');
+}
+
+// Função para processar a fila
+function processAlertQueue() {
+    if (alertQueue.length === 0) return;
+    
+    // Se o modal já está visível processando a tarefa ATUAL, não faz nada.
+    // Mas se acabamos de fechar um e chamamos o processAlertQueue novamente via setTimeout, 
+    // isAlertModalOpen deve ser false (controlado no final desta função).
+    if (isAlertModalOpen) return;
+
+    const task = alertQueue[0]; // Pega o primeiro da fila
+    isAlertModalOpen = true; // Bloqueia novas chamadas
+    
+    const modal = document.getElementById('alertModal');
+    document.getElementById('alert-task-id').textContent = task.id;
+    document.getElementById('alert-task-title').textContent = task.title;
+    document.getElementById('alert-queue-count').textContent = alertQueue.length - 1;
+    
+    // Configura o botão de dispensar
+    const dismissBtn = document.getElementById('dismissAlertBtn');
+    
+    // Remove listeners antigos clonando o botão
+    const newBtn = dismissBtn.cloneNode(true);
+    dismissBtn.parentNode.replaceChild(newBtn, dismissBtn);
+
+    // --- Reseta o visual do botão para o estado original ---
+    newBtn.innerHTML = `
+        <i data-lucide="check-check" class="w-6 h-6"></i>
+        <span>Estou Ciente e Vou Resolver</span>
+    `;
+    newBtn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl text-lg transition-transform transform hover:scale-105 shadow-lg flex items-center justify-center gap-2";
+    // Recria os ícones Lucide pois alteramos o innerHTML
+    lucide.createIcons();
+    
+    newBtn.addEventListener('click', async () => {
+        // Estado visual de carregamento
+        newBtn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Confirmando...';
+        lucide.createIcons();
+        
+        try {
+            await api.dismissAlert(task.id);
+            
+            // Sucesso: Remove o atual da fila
+            alertQueue.shift();
+            
+            // Fecha o modal visualmente
+            modal.classList.add('hidden');
+            
+            // Libera a flag para permitir que o próximo alerta abra
+            isAlertModalOpen = false;
+            
+            // Tenta processar o próximo imediatamente (se houver)
+            if (alertQueue.length > 0) {
+                setTimeout(processAlertQueue, 300);
+            }
+            
+        } catch (error) {
+            console.error(error);
+            newBtn.innerHTML = 'Erro - Tentar Novamente';
+        }
+    });
+
+    modal.classList.remove('hidden');
+}
+
+// Função para verificar se o usuário atual tem alertas
+function checkAndQueueAlerts(tasks) {
+    if (!state.currentUser) return;
+    
+    // Tenta pegar o nome da claim personalizada PRIMEIRO.
+    // O 'val' é onde o valor real fica nas claims do SWA.
+    const nameFromClaim = state.currentUser.claims && state.currentUser.claims.find(c => c.typ === 'name')?.val;
+    const myName = nameFromClaim || state.currentUser.userDetails;
+
+    console.log(`[DEBUG ALERTA] Sou: "${myName}" | Tarefas para checar: ${tasks.length}`);
+
+    if (!myName) return;
+
+    let foundAlert = false;
+
+    tasks.forEach(task => {
+        if (task.pendingAlerts && Array.isArray(task.pendingAlerts)) {
+            console.log(`[DEBUG ALERTA] Tarefa ${task.id} tem alertas para:`, task.pendingAlerts);
+            
+            if (task.pendingAlerts.includes(myName)) {
+                console.log(`[DEBUG ALERTA] MATCH! Encontrei um alerta para mim na tarefa ${task.id}`);
+                
+                // Se a tarefa não estiver já na fila, adiciona
+                if (!alertQueue.find(t => t.id === task.id)) {
+                    alertQueue.push(task);
+                    foundAlert = true;
+                }
+            }
+        }
+    });
+
+    if (foundAlert) {
+        processAlertQueue();
+    }
 }
