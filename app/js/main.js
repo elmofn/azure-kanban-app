@@ -597,8 +597,8 @@ function initializeListDragAndDrop() {
     });
 }
 
-// --- FUNÇÃO PARA MODAL DE CONFIRMAÇÃO ---
-function showConfirmModal(title, message, onConfirm, onCancel = null) {
+// FUNÇÃO PARA MODAL DE CONFIRMAÇÃO
+export function showConfirmModal(title, message, onConfirm, onCancel = null) {
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const confirmTitle = deleteConfirmModal.querySelector('h2');
     const confirmMessage = deleteConfirmModal.querySelector('p');
@@ -619,7 +619,7 @@ function showConfirmModal(title, message, onConfirm, onCancel = null) {
     deleteConfirmModal.classList.remove('hidden');
 }
 
-// Função para processar a fila
+// Função para processar a fila de alertas de tarefas
 function processAlertQueue() {
     if (alertQueue.length === 0) return;
     
@@ -646,7 +646,7 @@ function processAlertQueue() {
     // --- Reseta o visual do botão para o estado original ---
     newBtn.innerHTML = `
         <i data-lucide="check-check" class="w-6 h-6"></i>
-        <span>Estou Ciente e Vou Resolver</span>
+        <span>Confirmar Leitura</span>
     `;
     newBtn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl text-lg transition-transform transform hover:scale-105 shadow-lg flex items-center justify-center gap-2";
     // Recria os ícones Lucide pois alteramos o innerHTML

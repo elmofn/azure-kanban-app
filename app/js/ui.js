@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { fetchArchivedTasks } from './api.js';
+import { showConfirmModal } from './main.js';
 
 // --- Funções Auxiliares de Formatação ---
 export const formatDate = (dateString) => {
@@ -460,15 +461,22 @@ export function renderTaskHistory(taskId) {
     signalBtn.className = 'p-2 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors';
     signalBtn.title = 'Sinalizar Responsável (Enviar Alerta)';
     signalBtn.innerHTML = '<i data-lucide="megaphone" class="w-5 h-5"></i>';
-    signalBtn.onclick = async () => {
-        try {
-            // Importação dinâmica para evitar referências circulares se necessário, ou use a importação global
-            await import('./api.js').then(module => module.signalResponsible(taskId));
-            showToast('Responsável sinalizado com sucesso!', 'success');
-        } catch (e) {
-            console.error(e);
-            showToast('Erro ao sinalizar.', 'error');
-        }
+    signalBtn.onclick = () => {
+        // Chamamos o modal de confirmação antes de executar a ação
+        showConfirmModal(
+            'Sinalizar Responsável',
+            'Deseja realmente enviar um alerta de atenção para os responsáveis desta tarefa?',
+            async () => {
+                try {
+                    // Se o usuário confirmar, executa a sinalização
+                    await import('./api.js').then(module => module.signalResponsible(taskId));
+                    showToast('Responsável sinalizado com sucesso!', 'success');
+                } catch (e) {
+                    console.error(e);
+                    showToast('Erro ao sinalizar.', 'error');
+                }
+            }
+        );
     };
 
     // Insere o botão antes do botão de fechar
