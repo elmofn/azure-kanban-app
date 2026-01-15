@@ -393,33 +393,48 @@ export async function renderArchivedTasks() {
 export function renderTaskHistory(taskId) {
     const task = state.tasks.find(t => t.id === taskId);
     if (!task) return;
-    const statusLabels = { todo: 'A fazer', stopped: 'Parado', inprogress: 'Em Andamento', homologation: 'Em Homologação', done: 'Pronto', edited: 'Editado' };
+    const statusLabels = { 
+        todo: 'A fazer', 
+        stopped: 'Parado', 
+        inprogress: 'Em Andamento', 
+        homologation: 'Em Homologação', 
+        done: 'Pronto', 
+        edited: 'Editado' 
+    };
     
+    // 1. Preenchimento das Informações Básicas
     document.getElementById('modal-info-title').textContent = `${task.id}: ${task.title || ''}`;
     
     const projectTag = document.getElementById('modal-info-project');
     if (task.project) {
         projectTag.textContent = task.project;
         projectTag.style.color = task.projectColor;
-    } else { projectTag.textContent = ''; }
+    } else { 
+        projectTag.textContent = ''; 
+    }
     
     document.getElementById('modal-info-description').textContent = task.description;
     document.getElementById('modal-info-responsible').textContent = (task.responsible || []).map(r => (typeof r === 'object' ? r.name : r)).join(', ');
 
+    // 2. Links, Datas e Anexos (Campos Opcionais)
     const linkContainer = document.getElementById('modal-info-azure-link-container');
     const linkEl = document.getElementById('modal-info-azure-link');
     if (task.azureLink) {
         linkEl.href = task.azureLink;
         linkEl.textContent = task.azureLink;
         linkContainer.classList.remove('hidden');
-    } else { linkContainer.classList.add('hidden'); }
+    } else { 
+        linkContainer.classList.add('hidden'); 
+    }
     
     const dueDateContainer = document.getElementById('modal-info-dueDate-container');
     const dueDateEl = document.getElementById('modal-info-dueDate');
     if (task.dueDate) {
         dueDateEl.textContent = formatDate(task.dueDate);
         dueDateContainer.classList.remove('hidden');
-    } else { dueDateContainer.classList.add('hidden'); }
+    } else { 
+        dueDateContainer.classList.add('hidden'); 
+    }
 
     const attachmentsContainer = document.getElementById('modal-info-attachments-container');
     if (task.attachments && task.attachments.length > 0) {
@@ -429,15 +444,30 @@ export function renderTaskHistory(taskId) {
         attachmentsContainer.classList.add('hidden');
     }
     
-    const historyItems = (task.history || []).map(item => ({ ...item, type: 'history' }));
-    const commentItems = (task.comments || []).map((item, index) => ({ ...item, type: 'comment', index }));
-    const activityFeedItems = [...historyItems, ...commentItems].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const feedEl = document.getElementById('activity-feed');
-    
-    feedEl.innerHTML = activityFeedItems.map(item => {
-        if (item.type === 'history') {
-            return `<div class="flex items-start gap-3"><i data-lucide="history" class="w-4 h-4 text-custom-medium mt-1"></i><div><p class="text-sm text-custom-darkest dark:text-custom-light">Status alterado para <span class="font-semibold">${statusLabels[item.status] || item.status}</span></p><p class="text-xs text-custom-dark dark:text-custom-medium">${formatDateTime(item.timestamp)}</p></div></div>`;
-        } else {
+    // 3. Renderizar Histórico do Sistema (Logs de Status)
+    const historyFeedEl = document.getElementById('history-feed');
+    if (historyFeedEl) {
+        const historyItems = (task.history || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        historyFeedEl.innerHTML = historyItems.map(item => `
+            <div class="flex items-start gap-3 opacity-80">
+                <div class="mt-1 w-1.5 h-1.5 rounded-full bg-custom-medium shrink-0"></div>
+                <div>
+                    <p class="text-xs text-custom-darkest dark:text-custom-light">
+                        Status alterado para <span class="font-semibold">${statusLabels[item.status] || item.status}</span>
+                    </p>
+                    <p class="text-[10px] text-custom-dark dark:text-custom-medium">${formatDateTime(item.timestamp)}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 4. Renderizar Comentários (Interação Humana)
+    const commentsFeedEl = document.getElementById('comments-feed');
+    if (commentsFeedEl) {
+        const commentItems = (task.comments || []).map((item, index) => ({ ...item, index }))
+                                                  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        commentsFeedEl.innerHTML = commentItems.length > 0 ? commentItems.map(item => {
             const authorName = item.author || 'Utilizador';
             const user = state.users.find(u => u.name === authorName || u.email === authorName);
             const authorPicture = user ? user.picture : (state.currentUser && state.currentUser.userDetails === authorName ? state.currentUser.claims.picture : null);
@@ -446,13 +476,27 @@ export function renderTaskHistory(taskId) {
                 ? `<img src="${authorPicture}" alt="${authorName}" class="w-7 h-7 mt-0.5 rounded-full">`
                 : `<div class="w-7 h-7 mt-0.5 rounded-full bg-custom-dark text-white flex items-center justify-center text-xs font-bold">${authorName.charAt(0)}</div>`;
 
-            return `<div class="flex items-start gap-3 group relative">${avatar}<div><p class="font-bold text-sm text-custom-darkest dark:text-custom-light">${authorName}</p><div class="bg-custom-light dark:bg-custom-dark/50 p-3 rounded-lg mt-1"><p class="text-sm text-custom-darkest dark:text-custom-light">${item.text}</p></div><p class="text-xs text-custom-dark dark:text-custom-medium mt-1">${formatDateTime(item.timestamp)}</p></div><button class="delete-comment-btn absolute top-0 right-0 p-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" data-task-id="${taskId}" data-comment-index="${item.index}" title="Excluir comentário"><i data-lucide="trash-2" class="w-3 h-3 pointer-events-none"></i></button></div>`;
-        }
-    }).join('');
+            return `
+                <div class="flex items-start gap-3 group relative">
+                    ${avatar}
+                    <div class="flex-grow">
+                        <div class="flex justify-between items-center">
+                            <p class="font-bold text-sm text-custom-darkest dark:text-custom-light">${authorName}</p>
+                            <p class="text-[10px] text-custom-dark dark:text-custom-medium">${formatDateTime(item.timestamp)}</p>
+                        </div>
+                        <div class="bg-custom-light dark:bg-custom-dark/50 p-3 rounded-lg mt-1">
+                            <p class="text-sm text-custom-darkest dark:text-custom-light">${item.text}</p>
+                        </div>
+                    </div>
+                    <button class="delete-comment-btn absolute -top-1 -right-1 p-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" data-task-id="${taskId}" data-comment-index="${item.index}" title="Excluir comentário">
+                        <i data-lucide="trash-2" class="w-3 h-3 pointer-events-none"></i>
+                    </button>
+                </div>`;
+        }).join('') : '<p class="text-center text-sm text-custom-dark py-10 italic">Nenhum comentário ainda.</p>';
+    }
 
-    // --- Logica do botão pra sinalizar tarefa ao responsável ---
+    // 5. Lógica do Botão de Sinalização
     const headerButtonsContainer = document.querySelector('#taskHistoryModal .flex.items-center.gap-2');
-    // Remove botão antigo se existir para não duplicar ao reabrir o modal
     const oldSignalBtn = document.getElementById('signalBtn');
     if(oldSignalBtn) oldSignalBtn.remove();
 
@@ -462,13 +506,11 @@ export function renderTaskHistory(taskId) {
     signalBtn.title = 'Sinalizar Responsável (Enviar Alerta)';
     signalBtn.innerHTML = '<i data-lucide="megaphone" class="w-5 h-5"></i>';
     signalBtn.onclick = () => {
-        // Chamamos o modal de confirmação antes de executar a ação
         showConfirmModal(
             'Sinalizar Responsável',
             'Deseja realmente enviar um alerta de atenção para os responsáveis desta tarefa?',
             async () => {
                 try {
-                    // Se o usuário confirmar, executa a sinalização
                     await import('./api.js').then(module => module.signalResponsible(taskId));
                     showToast('Responsável sinalizado com sucesso!', 'success');
                 } catch (e) {
@@ -479,12 +521,12 @@ export function renderTaskHistory(taskId) {
         );
     };
 
-    // Insere o botão antes do botão de fechar
     const closeBtn = document.getElementById('closeHistoryBtn');
     if (headerButtonsContainer && closeBtn) {
         headerButtonsContainer.insertBefore(signalBtn, closeBtn);
     }
     
+    // 6. Exibição do Modal e Ícones
     document.getElementById('taskHistoryModal').classList.remove('hidden');
     lucide.createIcons();
 }

@@ -269,7 +269,7 @@
                             <p id="modal-info-dueDate" class="text-custom-darkest dark:text-custom-light"></p>
                         </div>
                     </div>
-                     <div id="modal-info-azure-link-container" class="hidden pt-4 border-t border-custom-light dark:border-custom-dark">
+                    <div id="modal-info-azure-link-container" class="hidden pt-4 border-t border-custom-light dark:border-custom-dark">
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-1">Link Azure DevOps</h3>
                         <a id="modal-info-azure-link" href="#" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline break-all"></a>
                     </div>
@@ -277,10 +277,21 @@
                         <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-2">Anexos</h3>
                         <div id="modal-info-attachments" class="space-y-2"></div>
                     </div>
+
+                    <div class="pt-4 border-t border-custom-light dark:border-custom-dark">
+                        <h3 class="font-bold text-sm text-custom-dark dark:text-custom-medium mb-3 flex items-center gap-2">
+                            <i data-lucide="history" class="w-4 h-4"></i> Histórico do Sistema
+                        </h3>
+                        <div id="history-feed" class="space-y-3 max-h-40 overflow-y-auto pr-2"></div>
+                    </div>
                 </div>
+
                 <div class="md:col-span-1 border-l-0 md:border-l border-custom-light dark:border-custom-dark md:pl-6 flex flex-col">
-                    <h3 class="font-bold text-lg text-custom-darkest dark:text-custom-light mb-4">Atividade</h3>
-                    <div id="activity-feed" class="space-y-4 flex-grow overflow-y-auto pr-2 -mr-2"></div>
+                    <h3 class="font-bold text-lg text-custom-darkest dark:text-custom-light mb-4 flex items-center gap-2">
+                        <i data-lucide="messages-square" class="w-5 h-5"></i> Comentários
+                    </h3>
+                    <div id="comments-feed" class="space-y-4 flex-grow overflow-y-auto pr-2 -mr-2"></div>
+                    
                     <div class="mt-4 pt-4 border-t border-custom-light dark:border-custom-dark">
                         <textarea id="comment-input" class="w-full shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" placeholder="Escreva um comentário..." rows="2"></textarea>
                         <div class="flex justify-end mt-2">
