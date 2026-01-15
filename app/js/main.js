@@ -598,16 +598,20 @@ function initializeListDragAndDrop() {
 }
 
 // FUNÇÃO PARA MODAL DE CONFIRMAÇÃO
-export function showConfirmModal(title, message, onConfirm, onCancel = null) {
+export function showConfirmModal(title, message, onConfirm, onCancel = null, confirmLabel = 'Excluir', cancelLabel = 'Cancelar') {
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const confirmTitle = deleteConfirmModal.querySelector('h2');
     const confirmMessage = deleteConfirmModal.querySelector('p');
     const confirmButton = document.getElementById('confirmDeleteBtn');
     const cancelButton = document.getElementById('cancelDeleteBtn');
-    
+
     confirmTitle.textContent = title;
     confirmMessage.textContent = message;
-    
+
+    // Atualiza o texto dos botões com os novos parâmetros
+    confirmButton.textContent = confirmLabel;
+    cancelButton.textContent = cancelLabel;
+
     confirmButton.onclick = () => {
         onConfirm();
         deleteConfirmModal.classList.add('hidden');

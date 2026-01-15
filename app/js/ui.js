@@ -1,6 +1,5 @@
 import { state } from './state.js';
 import { fetchArchivedTasks } from './api.js';
-import { showConfirmModal } from './main.js';
 
 // --- Funções Auxiliares de Formatação ---
 export const formatDate = (dateString) => {
@@ -517,7 +516,10 @@ export function renderTaskHistory(taskId) {
                     console.error(e);
                     showToast('Erro ao sinalizar.', 'error');
                 }
-            }
+            },
+            null,           // onCancel (mantido como null)
+            'Sinalizar',    // confirmLabel: Nome do botão de confirmação
+            'Voltar'        // cancelLabel: Nome do botão de cancelamento
         );
     };
 
@@ -823,4 +825,29 @@ export function renderUserManagementView() {
         </div>
     `;
     lucide.createIcons();
+}
+
+export function showConfirmModal(title, message, onConfirm, onCancel = null, confirmLabel = 'Excluir', cancelLabel = 'Cancelar') {
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    const confirmTitle = deleteConfirmModal.querySelector('h2');
+    const confirmMessage = deleteConfirmModal.querySelector('p');
+    const confirmButton = document.getElementById('confirmDeleteBtn');
+    const cancelButton = document.getElementById('cancelDeleteBtn');
+
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+
+    // Atualiza o texto dos botões com os novos parâmetros
+    confirmButton.textContent = confirmLabel;
+    cancelButton.textContent = cancelLabel;
+
+    confirmButton.onclick = () => {
+        onConfirm();
+        deleteConfirmModal.classList.add('hidden');
+    };
+    cancelButton.onclick = () => {
+        if (onCancel) onCancel();
+        deleteConfirmModal.classList.add('hidden');
+    };
+    deleteConfirmModal.classList.remove('hidden');
 }
