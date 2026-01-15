@@ -2,6 +2,7 @@ import { state } from './state.js';
 import * as api from './api.js';
 import * as ui from './ui.js';
 import { connectToSignalR } from './signalr.js';
+import { updateNotificationBadge, setupCommentAutocomplete } from './ui.js';
 
 // --- Variáveis Globais ---
 let listSortableInstance = null;
@@ -42,10 +43,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]);
         state.users = users;
         state.tasks = tasks;
+        updateNotificationBadge();
         checkAndQueueAlerts(state.tasks);
 
         // A inicialização dos event listeners só acontece depois de os dados estarem disponíveis
         initializeEventListeners();
+
+        // 1. Lógica do Dropdown de Notificação
+        const notifBtn = document.getElementById('notification-btn');
+        const notifDropdown = document.getElementById('notification-dropdown');
+
+        notifBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notifDropdown.classList.toggle('hidden');
+        });
+
+        document.getElementById('refresh-notifications').addEventListener('click', (e) => {
+            e.stopPropagation();
+            updateNotificationBadge();
+        });
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!notifDropdown.contains(e.target) && !notifBtn.contains(e.target)) {
+                notifDropdown.classList.add('hidden');
+            }
+        });
+
+
+        // 2. Ativar o Autocomplete quando abrir o histórico da tarefa
+        // Procure onde você tem o evento para abrir o histórico (ex: info-btn click ou editTaskBtn)
+        document.body.addEventListener('click', async (e) => {
+            const infoBtn = e.target.closest('.info-btn');
+            if (infoBtn) {
+                // ... código existente ...
+                // Adicione isto:
+                setTimeout(() => setupCommentAutocomplete(), 500); // Timeout pequeno para esperar o modal renderizar
+            }
+        });
         
         loaderContainerEl.classList.add('hidden');
         mainContentEl.classList.add('content-reveal');

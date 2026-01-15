@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { fetchArchivedTasks } from './api.js';
+import { markNotificationRead, fetchNotifications } from './api.js';
 
 // --- Funções Auxiliares de Formatação ---
 export const formatDate = (dateString) => {
@@ -510,16 +511,17 @@ export function renderTaskHistory(taskId) {
             'Deseja realmente enviar um alerta de atenção para os responsáveis desta tarefa?',
             async () => {
                 try {
-                    await import('./api.js').then(module => module.signalResponsible(taskId));
+                    const apiModule = await import('./api.js');
+                    await apiModule.signalResponsible(taskId);
                     showToast('Responsável sinalizado com sucesso!', 'success');
                 } catch (e) {
                     console.error(e);
                     showToast('Erro ao sinalizar.', 'error');
                 }
             },
-            null,           // onCancel (mantido como null)
-            'Sinalizar',    // confirmLabel: Nome do botão de confirmação
-            'Voltar'        // cancelLabel: Nome do botão de cancelamento
+            null,
+            'Sinalizar', // Nome do botão de confirmação
+            'Voltar'     // Nome do botão de cancelamento
         );
     };
 
@@ -850,4 +852,130 @@ export function showConfirmModal(title, message, onConfirm, onCancel = null, con
         deleteConfirmModal.classList.add('hidden');
     };
     deleteConfirmModal.classList.remove('hidden');
+}
+
+// --- ATUALIZAR LISTA DE NOTIFICAÇÕES ---
+export async function updateNotificationBadge() {
+    const notifications = await fetchNotifications();
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    
+    const badge = document.getElementById('notification-badge');
+    const list = document.getElementById('notification-list');
+    
+    if (unreadCount > 0) {
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+
+    list.innerHTML = '';
+    if (notifications.length === 0) {
+        list.innerHTML = '<p class="p-6 text-center text-sm text-gray-500">Você não tem notificações.</p>';
+        return;
+    }
+
+    notifications.forEach(notif => {
+        const item = document.createElement('div');
+        // Estilo diferente se não lida
+        const bgClass = notif.isRead ? 'bg-transparent opacity-70' : 'bg-blue-50 dark:bg-blue-900/20';
+        item.className = `p-3 border-b border-custom-light dark:border-custom-dark hover:bg-gray-100 dark:hover:bg-custom-dark/40 cursor-pointer transition-colors ${bgClass}`;
+        
+        item.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="mt-1 bg-custom-dark text-white rounded-full p-1.5 shrink-0"><i data-lucide="at-sign" class="w-3 h-3"></i></div>
+                <div>
+                    <p class="text-xs font-bold text-custom-darkest dark:text-custom-light">${notif.message}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 italic line-clamp-2">"${notif.commentPreview}"</p>
+                    <p class="text-[10px] text-gray-400 mt-1">${new Date(notif.createdAt).toLocaleString('pt-BR')}</p>
+                </div>
+            </div>
+        `;
+        
+        item.addEventListener('click', async () => {
+            // 1. Marca como lida
+            if (!notif.isRead) {
+                await markNotificationRead(notif.id);
+                updateNotificationBadge(); // Atualiza contador
+            }
+            // 2. Abre a tarefa
+            const task = state.tasks.find(t => t.id === notif.taskId);
+            if (task) {
+                state.lastInteractedTaskId = task.id;
+                // Fecha dropdown
+                document.getElementById('notification-dropdown').classList.add('hidden');
+                
+                // Abre modal usando a função existente
+                highlightTask(task.id, false);
+                renderTaskHistory(task.id);
+            } else {
+                showToast('A tarefa não foi encontrada (pode ter sido excluída).', 'error');
+            }
+        });
+        
+        list.appendChild(item);
+    });
+    lucide.createIcons();
+}
+
+// --- AUTOCOMPLETE NO COMENTÁRIO (@) ---
+export function setupCommentAutocomplete() {
+    const input = document.getElementById('comment-input');
+    if (!input) return; 
+
+    // Cria o container de sugestão se não existir e anexa ao pai do input
+    let suggestionBox = document.getElementById('comment-suggestions');
+    if (!suggestionBox) {
+        suggestionBox = document.createElement('div');
+        suggestionBox.id = 'comment-suggestions';
+        suggestionBox.className = 'absolute bottom-16 left-0 w-64 bg-white dark:bg-custom-darkest border border-custom-medium dark:border-custom-dark rounded-md shadow-xl hidden z-[60] max-h-40 overflow-y-auto';
+        input.parentNode.style.position = 'relative'; // Garante posicionamento relativo
+        input.parentNode.appendChild(suggestionBox);
+    }
+
+    input.addEventListener('keyup', (e) => {
+        const cursorPosition = input.selectionStart;
+        const textBeforeCursor = input.value.substring(0, cursorPosition);
+        const lastAt = textBeforeCursor.lastIndexOf('@');
+        
+        if (lastAt !== -1) {
+            const query = textBeforeCursor.substring(lastAt + 1);
+            // Se houver espaço, assume que parou de digitar o nome
+            if (query.includes(' ')) {
+                suggestionBox.classList.add('hidden');
+                return;
+            }
+
+            // Filtra usuários (excluindo 'DEFINIR')
+            const matches = state.users.filter(u => u.name.toLowerCase().includes(query.toLowerCase()) && u.name !== 'DEFINIR');
+            
+            if (matches.length > 0) {
+                suggestionBox.innerHTML = '';
+                matches.forEach(user => {
+                    const div = document.createElement('div');
+                    div.className = 'p-2 hover:bg-custom-light dark:hover:bg-custom-dark cursor-pointer flex items-center gap-2 text-sm text-custom-darkest dark:text-custom-light';
+                    
+                    const avatar = user.picture 
+                        ? `<img src="${user.picture}" class="w-5 h-5 rounded-full">` 
+                        : `<div class="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center text-[10px] text-white">${user.name.charAt(0)}</div>`;
+
+                    div.innerHTML = `${avatar}<span class="font-bold">@${user.name}</span>`;
+                    
+                    div.onmousedown = (evt) => { // Usar onmousedown previne perder foco antes do clique
+                        evt.preventDefault();
+                        const textAfterCursor = input.value.substring(cursorPosition);
+                        const newText = input.value.substring(0, lastAt) + `@${user.name} ` + textAfterCursor;
+                        input.value = newText;
+                        suggestionBox.classList.add('hidden');
+                        input.focus();
+                    };
+                    suggestionBox.appendChild(div);
+                });
+                suggestionBox.classList.remove('hidden');
+            } else {
+                suggestionBox.classList.add('hidden');
+            }
+        } else {
+            suggestionBox.classList.add('hidden');
+        }
+    });
 }

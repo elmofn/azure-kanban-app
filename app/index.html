@@ -85,6 +85,21 @@
                         <i data-lucide="plus" class="w-4 h-4"></i>
                         <span>Nova Tarefa</span>
                     </button>
+                    <div class="relative ml-4 mr-2 z-50" id="notification-container">
+                        <button id="notification-btn" class="relative p-2 rounded-lg text-custom-dark dark:text-custom-medium hover:bg-custom-light dark:hover:bg-custom-dark/50 transition-colors">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <span id="notification-badge" class="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 hidden border border-white dark:border-custom-darkest animate-pulse"></span>
+                        </button>
+                        
+                        <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-custom-darkest rounded-xl shadow-2xl border border-custom-light dark:border-custom-dark overflow-hidden">
+                            <div class="p-3 border-b border-custom-light dark:border-custom-dark flex justify-between items-center bg-gray-50 dark:bg-custom-darkest">
+                                <h3 class="font-bold text-sm text-custom-darkest dark:text-custom-light">Notificações</h3>
+                                <button id="refresh-notifications" class="text-xs text-blue-500 hover:underline"><i data-lucide="refresh-cw" class="w-3 h-3"></i></button>
+                            </div>
+                            <div id="notification-list" class="max-h-80 overflow-y-auto">
+                                </div>
+                        </div>
+                    </div>
                     <button id="theme-toggle" class="p-2 rounded-lg text-custom-dark dark:text-custom-medium hover:bg-custom-light dark:hover:bg-custom-dark/50 transition-colors">
                         <i id="theme-icon-light" data-lucide="sun" class="w-5 h-5 hidden"></i>
                         <i id="theme-icon-dark" data-lucide="moon" class="w-5 h-5"></i>

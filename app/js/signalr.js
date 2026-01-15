@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { updateActiveView, renderTaskHistory } from './ui.js';
+import { updateActiveView, renderTaskHistory, updateNotificationBadge } from './ui.js';
 import { fetchTasks } from './api.js';
 
 export function connectToSignalR(onTasksUpdatedCallback) {
@@ -20,6 +20,7 @@ export function connectToSignalR(onTasksUpdatedCallback) {
         if (index !== -1) {
             state.tasks[index] = updatedTask;
         }
+        updateNotificationBadge();
         updateActiveView();
         onTasksUpdatedCallback();
 

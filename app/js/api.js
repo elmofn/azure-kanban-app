@@ -159,3 +159,17 @@ export async function dismissAlert(taskId) {
     if (!response.ok) throw new Error('Falha ao dispensar alerta.');
     return await response.json();
 }
+
+export async function fetchNotifications() {
+    const response = await fetch('/api/getNotifications');
+    if (!response.ok) return [];
+    return await response.json();
+}
+
+export async function markNotificationRead(id) {
+    await fetch('/api/markNotificationRead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+}
