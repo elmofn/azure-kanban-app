@@ -103,6 +103,7 @@ export function renderModalAttachments(files) {
 
 // --- Funções de Renderização da UI Principal ---
 export const createTaskElement = (task) => {
+
     const taskCard = document.createElement('div');
     const overdueClass = isTaskOverdue(task) ? ' task-overdue' : '';
     taskCard.className = `task-card bg-base-white dark:bg-custom-darkest rounded-lg shadow-sm flex flex-col overflow-hidden fade-in ${overdueClass}`;
@@ -153,10 +154,10 @@ export const createTaskElement = (task) => {
             <div class="px-3 py-2 border-t border-custom-light dark:border-custom-dark/50 flex justify-between items-center">
                 ${responsibleDisplay}
                 <div class="flex items-center gap-1">
-                    ${approveButton}
-                    <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1.5 rounded-full" data-task-id="${task.id}" title="Ver detalhes"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
-                    <a href="${task.azureLink || '#'}" target="_blank" rel="noopener noreferrer" class="${task.azureLink ? '' : 'hidden'} text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1.5 rounded-full" title="Abrir no Azure DevOps"><i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i></a>
-                    <button class="delete-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 p-1.5 rounded-full" data-task-id="${task.id}" title="Excluir tarefa"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
+                    ${approveButton}                   
+                    <button class="info-btn text-custom-medium hover:text-custom-dark dark:hover:text-custom-light p-1.5 rounded-full transition-colors" data-task-id="${task.id}" title="Ver Detalhes"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
+                    <a href="${task.azureLink || '#'}" target="_blank" class="${task.azureLink ? '' : 'hidden'} text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 p-1.5 rounded-full" title="Abrir no Azure"><i data-lucide="external-link" class="w-5 h-5 pointer-events-none"></i></a>
+                    <button class="delete-btn text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-full transition-colors" data-task-id="${task.id}" title="Excluir"><i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i></button>
                 </div>
             </div>
         </div>
@@ -401,6 +402,21 @@ export function renderTaskHistory(taskId) {
         done: 'Pronto', 
         edited: 'Editado' 
     };
+
+    const calendarBtn = document.getElementById('modal-calendar-btn');
+    if (calendarBtn) {
+        // 1. Coleta emails dos responsáveis
+        const responsibleEmails = (task.responsible || [])
+            .map(r => (typeof r === 'object' ? r.email : null))
+            .filter(email => email)
+            .join(',');
+
+        // 2. Gera o Link
+        const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("SyncBoard Meet: " + task.title)}&details=${encodeURIComponent("Discussão sobre a tarefa: " + task.title + "\n\nProjeto: " + (task.project || "Geral"))}&add=${responsibleEmails}`;
+        
+        // 3. Atualiza o botão
+        calendarBtn.href = googleUrl;
+    }
     
     // 1. Preenchimento das Informações Básicas
     document.getElementById('modal-info-title').textContent = `${task.id}: ${task.title || ''}`;
