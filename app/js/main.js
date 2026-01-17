@@ -633,17 +633,21 @@ function initializeListDragAndDrop() {
 }
 
 // FUNÇÃO PARA MODAL DE CONFIRMAÇÃO
-export function showConfirmModal(title, message, onConfirm, onCancel = null, confirmLabel = 'Excluir', cancelLabel = 'Cancelar') {
+export function showConfirmModal(title, message, onConfirm, onCancel = null, confirmLabel = 'Excluir', cancelLabel = 'Cancelar', iconName = 'trash-2') {
     const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const confirmTitle = deleteConfirmModal.querySelector('h2');
     const confirmMessage = deleteConfirmModal.querySelector('p');
     const confirmButton = document.getElementById('confirmDeleteBtn');
     const cancelButton = document.getElementById('cancelDeleteBtn');
 
+    const iconElement = document.getElementById('modal-icon');
+    if (iconElement) {
+        iconElement.setAttribute('data-lucide', iconName);
+    }
+
     confirmTitle.textContent = title;
     confirmMessage.textContent = message;
 
-    // Atualiza o texto dos botões com os novos parâmetros
     confirmButton.textContent = confirmLabel;
     cancelButton.textContent = cancelLabel;
 
@@ -655,7 +659,13 @@ export function showConfirmModal(title, message, onConfirm, onCancel = null, con
         if (onCancel) onCancel();
         deleteConfirmModal.classList.add('hidden');
     };
+    
     deleteConfirmModal.classList.remove('hidden');
+    
+    // IMPORTANTE: Recria os ícones para aplicar a mudança visualmente
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
 }
 
 // Função para processar a fila de alertas de tarefas

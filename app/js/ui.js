@@ -535,9 +535,10 @@ export function renderTaskHistory(taskId) {
                     showToast('Erro ao sinalizar.', 'error');
                 }
             },
-            null,
-            'Sinalizar', // Nome do botão de confirmação
-            'Voltar'     // Nome do botão de cancelamento
+            null,           // onCancel
+            'Sinalizar',    // Texto do botão confirmar
+            'Voltar',       // Texto do botão cancelar
+            'megaphone'     // ÍCONE
         );
     };
 
