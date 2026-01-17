@@ -155,7 +155,7 @@ function initializeEventListeners() {
             const fileToRemove = localFiles[indexToRemove];
 
             if (blobName && !(fileToRemove instanceof File)) {
-                showConfirmModal(
+                ui.showConfirmModal(
                     'Excluir Anexo',
                     `Tem a certeza de que deseja excluir o anexo "${fileToRemove.name}"? Esta ação é permanente.`,
                     async () => {
@@ -481,7 +481,7 @@ function initializeEventListeners() {
         const deleteBtn = e.target.closest('.delete-btn');
         if (deleteBtn) {
             const taskId = deleteBtn.dataset.taskId;
-            showConfirmModal(
+            ui.showConfirmModal(
                 'Excluir Tarefa',
                 'Você tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.',
                 async () => {
@@ -519,7 +519,7 @@ function initializeEventListeners() {
         if (deleteCommentBtn) {
             const taskId = deleteCommentBtn.dataset.taskId;
             const commentIndex = parseInt(deleteCommentBtn.dataset.commentIndex, 10);
-            showConfirmModal(
+            ui.showConfirmModal(
                 'Excluir Comentário',
                 'Você tem certeza que deseja excluir este comentário?',
                 async () => {
@@ -534,39 +534,39 @@ function initializeEventListeners() {
             );
         }
         const deleteUserBtn = e.target.closest('.delete-user-btn');
-        if (deleteUserBtn) {
-            const userId = deleteUserBtn.dataset.userId;
-            
-            // Encontrar o nome do utilizador para mostrar na mensagem
-            const user = state.users.find(u => u.id === userId || u.email === userId);
-            const userName = user ? user.name : userId;
+            if (deleteUserBtn) {
+                const userId = deleteUserBtn.dataset.userId;
+                
+                // Encontrar o nome do utilizador para mostrar na mensagem
+                const user = state.users.find(u => u.id === userId || u.email === userId);
+                const userName = user ? user.name : userId;
 
-            showConfirmModal(
-                'Eliminar Utilizador',
-                `Tem a certeza de que deseja remover o acesso de "${userName}"?`,
-                async () => {
-                    try {
-                        await api.deleteUser(userId);
-                        
-                        // Atualizar o estado local removendo o utilizador
-                        state.users = state.users.filter(u => u.id !== userId && u.email !== userId);
-                        
-                        // Atualizar a UI
-                        ui.renderUserManagementView();
-                        ui.showToast('Utilizador removido com sucesso.', 'info');
-                        
-                        // Opcional: Atualizar filtros de responsáveis se necessário
-                        ui.populateResponsibleFilter(); 
-                        
-                    } catch (error) {
-                        console.error("Erro ao eliminar utilizador:", error);
-                        ui.showToast(error.message || 'Falha ao eliminar utilizador.', 'error');
+                ui.showConfirmModal(
+                    'Eliminar Utilizador',
+                    `Tem a certeza de que deseja remover o acesso de "${userName}"?`,
+                    async () => {
+                        try {
+                            await api.deleteUser(userId);
+                            
+                            // Atualizar o estado local removendo o utilizador
+                            state.users = state.users.filter(u => u.id !== userId && u.email !== userId);
+                            
+                            // Atualizar a UI
+                            ui.renderUserManagementView();
+                            ui.showToast('Utilizador removido com sucesso.', 'info');
+                            
+                            // Opcional: Atualizar filtros de responsáveis se necessário
+                            ui.populateResponsibleFilter(); 
+                            
+                        } catch (error) {
+                            console.error("Erro ao eliminar utilizador:", error);
+                            ui.showToast(error.message || 'Falha ao eliminar utilizador.', 'error');
+                        }
                     }
-                }
-            );
-        }
-    });
-}
+                );
+            }
+        });
+    }
 
 // --- FUNÇÕES DE DRAG-AND-DROP ---
 function initializeKanbanDragAndDrop() {
@@ -630,42 +630,6 @@ function initializeListDragAndDrop() {
             }
         }
     });
-}
-
-// FUNÇÃO PARA MODAL DE CONFIRMAÇÃO
-export function showConfirmModal(title, message, onConfirm, onCancel = null, confirmLabel = 'Excluir', cancelLabel = 'Cancelar', iconName = 'trash-2') {
-    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-    const confirmTitle = deleteConfirmModal.querySelector('h2');
-    const confirmMessage = deleteConfirmModal.querySelector('p');
-    const confirmButton = document.getElementById('confirmDeleteBtn');
-    const cancelButton = document.getElementById('cancelDeleteBtn');
-
-    const iconElement = document.getElementById('modal-icon');
-    if (iconElement) {
-        iconElement.setAttribute('data-lucide', iconName);
-    }
-
-    confirmTitle.textContent = title;
-    confirmMessage.textContent = message;
-
-    confirmButton.textContent = confirmLabel;
-    cancelButton.textContent = cancelLabel;
-
-    confirmButton.onclick = () => {
-        onConfirm();
-        deleteConfirmModal.classList.add('hidden');
-    };
-    cancelButton.onclick = () => {
-        if (onCancel) onCancel();
-        deleteConfirmModal.classList.add('hidden');
-    };
-    
-    deleteConfirmModal.classList.remove('hidden');
-    
-    // IMPORTANTE: Recria os ícones para aplicar a mudança visualmente
-    if (window.lucide) {
-        window.lucide.createIcons();
-    }
 }
 
 // Função para processar a fila de alertas de tarefas
