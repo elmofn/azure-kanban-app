@@ -1,6 +1,5 @@
 import { state } from './state.js';
-import { fetchArchivedTasks } from './api.js';
-import { markNotificationRead, fetchNotifications } from './api.js';
+import { markNotificationRead, fetchNotifications, fetchArchivedTasks } from './api.js';
 
 // --- Funções Auxiliares de Formatação ---
 export const formatDate = (dateString) => {
@@ -875,6 +874,7 @@ export function showConfirmModal(title, message, onConfirm, onCancel = null, con
     };
     
     deleteConfirmModal.classList.remove('hidden');
+
 
     if (window.lucide) {
         window.lucide.createIcons();
