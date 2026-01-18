@@ -23,7 +23,8 @@
   "routes": [
     {
       "route": "/login",
-      "redirect": "/.auth/login/google?prompt=select_account"
+      "rewrite": "/login.html",
+      "allowedRoles": ["anonymous", "authenticated"]
     },
     {
       "route": "/logout",
