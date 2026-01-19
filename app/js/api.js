@@ -173,3 +173,16 @@ export async function markNotificationRead(id) {
         body: JSON.stringify({ id })
     });
 }
+
+export async function improveTitle(currentTitle, userInstruction) {
+    const response = await fetch('/api/improveTitle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentTitle, userInstruction })
+    });
+
+    if (!response.ok) {
+        throw new Error('Falha ao melhorar o título.');
+    }
+    return await response.json();
+}

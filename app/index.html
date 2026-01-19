@@ -175,8 +175,16 @@
                 </div>
                 <div class="p-6 space-y-4 overflow-y-auto flex-grow">
                     <div>
-                        <label for="taskTitle" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Título</label>
-                        <input type="text" id="taskTitle" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" required>
+                        <label for="taskTitle" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">
+                            Título
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" id="taskTitle" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-custom-dark focus:border-custom-dark" required>
+                            
+                            <button type="button" id="openAiModalBtn" class="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center shadow-sm" title="Melhorar com IA">
+                                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label for="taskDescription" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">Descrição</label>
@@ -367,6 +375,79 @@
                 <span>Confirmar leitura</span>
             </button>
             <p class="mt-4 text-xs text-white/80 font-mono">Alertas restantes na fila: <span id="alert-queue-count">0</span></p>
+        </div>
+    </div>
+
+    <div id="aiTitleModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-base-white dark:bg-custom-darkest border border-custom-light dark:border-custom-dark/50 rounded-xl shadow-2xl w-full max-w-md modal-content flex flex-col">
+            
+            <div class="p-6 border-b border-custom-light dark:border-custom-dark flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-lg text-purple-600 dark:text-purple-400">
+                        <i data-lucide="bot" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-custom-darkest dark:text-custom-light">Melhorar Título</h2>
+                        <p class="text-xs text-custom-dark dark:text-custom-medium">Use IA para refinar a comunicação.</p>
+                    </div>
+                </div>
+                <button id="closeAiModalBtn" class="text-custom-medium hover:text-custom-dark dark:hover:text-custom-light transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Título Atual</label>
+                    <p id="ai-original-title" class="text-sm text-custom-darkest dark:text-custom-light italic bg-custom-light/30 dark:bg-custom-dark/20 p-3 rounded-lg border border-dashed border-custom-medium/50">
+                        ...
+                    </p>
+                </div>
+
+                <div>
+                    <label for="ai-instruction" class="block text-sm font-bold mb-2 text-custom-dark dark:text-custom-medium">O que devo fazer?</label>
+                    <textarea id="ai-instruction" rows="2" class="shadow-sm appearance-none border border-custom-medium dark:border-custom-dark bg-transparent rounded-lg w-full py-2 px-3 text-custom-darkest dark:text-custom-light focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm" placeholder="Ex: Deixar menos técnico, resumir, traduzir para inglês..."></textarea>
+                    
+                    <div class="flex gap-2 mt-2 overflow-x-auto pb-1 no-scrollbar">
+                        <button type="button" class="ai-suggestion-chip text-xs bg-custom-light dark:bg-custom-dark/50 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-custom-darkest dark:text-custom-light px-3 py-1 rounded-full transition-colors whitespace-nowrap border border-transparent hover:border-purple-300">
+                            Menos técnico
+                        </button>
+                        <button type="button" class="ai-suggestion-chip text-xs bg-custom-light dark:bg-custom-dark/50 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-custom-darkest dark:text-custom-light px-3 py-1 rounded-full transition-colors whitespace-nowrap border border-transparent hover:border-purple-300">
+                            Mais formal
+                        </button>
+                        <button type="button" class="ai-suggestion-chip text-xs bg-custom-light dark:bg-custom-dark/50 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-custom-darkest dark:text-custom-light px-3 py-1 rounded-full transition-colors whitespace-nowrap border border-transparent hover:border-purple-300">
+                            Resumir
+                        </button>
+                    </div>
+                </div>
+
+                <div id="ai-result-container" class="hidden animate-fade-in">
+                    <label class="block text-xs font-bold uppercase text-purple-600 dark:text-purple-400 mb-1">Sugestão da IA</label>
+                    <div class="relative">
+                        <textarea id="ai-result-text" rows="2" class="w-full bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg p-3 text-custom-darkest dark:text-custom-light font-medium focus:outline-none"></textarea>
+                        <div class="absolute top-2 right-2">
+                            <span class="flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-custom-light/50 dark:bg-custom-dark/20 flex items-center justify-end gap-3 rounded-b-xl">
+                <button type="button" id="cancelAiBtn" class="text-custom-dark hover:text-custom-darkest dark:text-custom-medium dark:hover:text-white font-semibold py-2 px-4 rounded-lg text-sm transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" id="generateAiBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-all shadow-lg shadow-purple-500/30 flex items-center gap-2 text-sm">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span>Gerar</span>
+                </button>
+                <button type="button" id="applyAiBtn" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-all shadow-lg shadow-green-500/30 flex items-center gap-2 text-sm">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Usar este</span>
+                </button>
+            </div>
         </div>
     </div>
 </body>

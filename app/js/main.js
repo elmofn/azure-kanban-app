@@ -303,6 +303,118 @@ function initializeEventListeners() {
         taskModal.classList.remove('hidden');
     });
 
+    // --- LÓGICA DO MODAL DE IA ---
+    const aiModal = document.getElementById('aiTitleModal');
+    const openAiBtn = document.getElementById('openAiModalBtn');
+    const closeAiBtn = document.getElementById('closeAiModalBtn');
+    const cancelAiBtn = document.getElementById('cancelAiBtn');
+    const generateAiBtn = document.getElementById('generateAiBtn');
+    const applyAiBtn = document.getElementById('applyAiBtn');
+    
+    const taskTitleInput = document.getElementById('taskTitle');
+    const aiOriginalTitle = document.getElementById('ai-original-title');
+    const aiInstructionInput = document.getElementById('ai-instruction');
+    const aiResultContainer = document.getElementById('ai-result-container');
+    const aiResultText = document.getElementById('ai-result-text');
+
+    // Chips de sugestão
+    document.querySelectorAll('.ai-suggestion-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            aiInstructionInput.value = chip.textContent.trim();
+            aiInstructionInput.focus();
+        });
+    });
+
+    // Abrir Modal
+    openAiBtn.addEventListener('click', () => {
+        const currentTitle = taskTitleInput.value.trim();
+        if (!currentTitle) {
+            ui.showToast('Digite um título para a IA analisar.', 'info');
+            return;
+        }
+
+        // Preenche dados iniciais
+        aiOriginalTitle.textContent = currentTitle;
+        aiInstructionInput.value = ''; 
+        aiResultText.value = ''; // Limpa qualquer texto de resultado anterior
+        
+        // --- RESET COMPLETO DO ESTADO VISUAL ---
+        
+        // 1. Esconde a área de resultado e o botão de aplicar
+        aiResultContainer.classList.add('hidden');
+        applyAiBtn.classList.add('hidden');
+        generateAiBtn.classList.remove('hidden');
+
+        // 2. Reseta o texto e ícone do botão "Gerar"
+        generateAiBtn.disabled = false;
+        generateAiBtn.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4"></i> <span>Gerar</span>';
+        
+        // 3. Restaura as classes originais (Estilo Primário) e remove as de "Tentar Novamente"
+        // Adiciona estilo roxo sólido
+        generateAiBtn.classList.add('bg-purple-600', 'text-white', 'shadow-purple-500/30');
+        // Remove estilo transparente/secundário usado no "Tentar Novamente"
+        generateAiBtn.classList.remove('text-purple-600', 'hover:bg-purple-50', 'dark:hover:bg-purple-900/20');
+        
+        // Abre o modal
+        aiModal.classList.remove('hidden');
+        aiInstructionInput.focus();
+        lucide.createIcons();
+    });
+
+    // Fechar Modal
+    const closeAiModal = () => aiModal.classList.add('hidden');
+    closeAiBtn.addEventListener('click', closeAiModal);
+    cancelAiBtn.addEventListener('click', closeAiModal);
+
+    // Gerar Título
+    generateAiBtn.addEventListener('click', async () => {
+        const currentTitle = taskTitleInput.value.trim();
+        const instruction = aiInstructionInput.value.trim();
+
+        // Estado de Loading
+        generateAiBtn.disabled = true;
+        generateAiBtn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Pensando...';
+        lucide.createIcons();
+
+        try {
+            const result = await api.improveTitle(currentTitle, instruction);
+            
+            // Mostrar Resultado
+            aiResultText.value = result.title;
+            aiResultContainer.classList.remove('hidden');
+            
+            // Trocar botões
+            generateAiBtn.classList.add('hidden');
+            applyAiBtn.classList.remove('hidden');
+
+        } catch (error) {
+            console.error(error);
+            ui.showToast('Erro ao conectar com a IA.', 'error');
+        } finally {
+            generateAiBtn.disabled = false;
+            generateAiBtn.innerHTML = '<i data-lucide="sparkles"></i> <span>Tentar Novamente</span>';
+            generateAiBtn.classList.remove('bg-purple-600', 'text-white'); // Muda estilo para secundário
+            generateAiBtn.classList.add('text-purple-600', 'hover:bg-purple-50', 'dark:hover:bg-purple-900/20');
+            lucide.createIcons();
+        }
+    });
+
+    // Aplicar Título
+    applyAiBtn.addEventListener('click', () => {
+        if (aiResultText.value) {
+            taskTitleInput.value = aiResultText.value;
+            
+            // Feedback visual no input original
+            taskTitleInput.classList.add('ring-2', 'ring-purple-500', 'border-purple-500');
+            setTimeout(() => {
+                taskTitleInput.classList.remove('ring-2', 'ring-purple-500', 'border-purple-500');
+            }, 1500);
+
+            closeAiModal();
+            ui.showToast('Título atualizado pela IA! Agora não precisam mais Brigar!', 'success');
+        }
+    });
+
     // Botão de cancelar do modal
     document.getElementById('cancelBtn').addEventListener('click', () => taskModal.classList.add('hidden'));
 
