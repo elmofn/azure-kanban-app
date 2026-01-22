@@ -19,6 +19,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Carrega dados essenciais primeiro
         state.currentUser = await api.getUserInfo();
 
+        if (state.currentUser && state.currentUser.claims) {
+            const pictureClaim = state.currentUser.claims.find(c => c.typ === 'picture' || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/picture');
+            const photoUrl = pictureClaim ? pictureClaim.val : state.currentUser.claims.find(c => c.val && c.val.includes('googleusercontent.com'))?.val;
+
+            if (photoUrl) {
+                // Usa a nova função do api.js
+                // Não usamos 'await' para não bloquear o carregamento da página
+                api.updateUserPhoto(photoUrl).catch(err => console.error("SyncBoard: Erro na foto:", err));
+            }
+        }
+
         if (!state.currentUser || !state.currentUser.userRoles.includes('travelcash_user')) {
             loaderContainerEl.innerHTML = `
                 <div class="text-center text-white p-8">

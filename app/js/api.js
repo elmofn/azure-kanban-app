@@ -186,3 +186,19 @@ export async function improveTitle(currentTitle, userInstruction) {
     }
     return await response.json();
 }
+
+export async function updateUserPhoto(pictureUrl) {
+    const response = await fetch('/api/updateUserPhoto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pictureUrl })
+    });
+    
+    // Não vamos lançar erro aqui para não travar a aplicação caso falhe, 
+    // mas retornamos o status para quem chamar decidir.
+    if (!response.ok) {
+        console.warn('Falha silenciosa ao atualizar foto de perfil.');
+        return null;
+    }
+    return await response.json();
+}
