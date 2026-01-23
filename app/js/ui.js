@@ -109,33 +109,55 @@ export const createTaskElement = (task) => {
     taskCard.dataset.taskId = task.id;
 
     let responsibleDisplay = '';
+    
+    // Verifica se existem responsáveis
     if (Array.isArray(task.responsible) && task.responsible.length > 0) {
+        
         const avatars = task.responsible.map(resp => {
-            // LÓGICA DE COMPATIBILIDADE ADICIONADA
+            // 1. Normaliza o nome e busca a imagem
             const isObject = typeof resp === 'object' && resp !== null && resp.name;
             const name = isObject ? resp.name : resp;
-            const picture = isObject ? resp.picture : null;
+            
+            // BUSCA DINÂMICA: Tenta pegar a foto atualizada do state
+            const userFromState = state.users.find(u => u.name === name);
+            const picture = userFromState?.picture || (isObject ? resp.picture : null);
 
+            // 2. Renderiza o avatar apropriado
             if (name === 'DEFINIR') {
                 return `<div class="w-6 h-6 rounded-full bg-gray-400 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-custom-darkest" title="A Definir">?</div>`;
             }
+            
             if (picture) {
                 return `<img src="${picture}" alt="${name}" class="w-6 h-6 rounded-full border-2 border-white dark:border-custom-darkest" title="${name}">`;
             }
+            
+            // Fallback: Bola colorida com a inicial
             return `<div class="w-6 h-6 rounded-full bg-custom-dark text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-custom-darkest" title="${name}">${name.charAt(0)}</div>`;
-        }).slice(0, 3).join('');
-        const remainingCount = task.responsible.length > 3 ? `<div class="w-6 h-6 rounded-full bg-custom-medium text-custom-darkest flex items-center justify-center text-xs font-bold border-2 border-white dark:border-custom-darkest">+${task.responsible.length - 3}</div>` : '';
+        
+        }).slice(0, 3).join(''); // Pega apenas os 3 primeiros
+
+        // Contador para os restantes (+2, +3 etc)
+        const remainingCount = task.responsible.length > 3 
+            ? `<div class="w-6 h-6 rounded-full bg-custom-medium text-custom-darkest flex items-center justify-center text-xs font-bold border-2 border-white dark:border-custom-darkest">+${task.responsible.length - 3}</div>` 
+            : '';
+            
         responsibleDisplay = `<div class="flex -space-x-2">${avatars}${remainingCount}</div>`;
     }
 
-    const approveButton = task.status === 'homologation' ? `<button class="approve-btn bg-green-500/10 hover:bg-green-500/20 text-green-600 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar"><i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i></button>` : '';
+    // Botões e Elementos Visuais do Card
+    const approveButton = task.status === 'homologation' 
+        ? `<button class="approve-btn bg-green-500/10 hover:bg-green-500/20 text-green-600 p-1.5 rounded-full" data-task-id="${task.id}" title="Aprovar e Arquivar"><i data-lucide="check-circle-2" class="w-5 h-5 pointer-events-none"></i></button>` 
+        : '';
 
     const dueDateTag = task.dueDate 
         ? `<div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-custom-light dark:bg-custom-dark/50 px-2 py-0.5 rounded"><i data-lucide="calendar" class="w-3 h-3"></i><span>${formatDate(task.dueDate)}</span></div>` 
         : `<div class="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-custom-dark/30 px-2 py-0.5 rounded"><i data-lucide="calendar-off" class="w-3 h-3"></i><span>Sem prazo definido</span></div>`;
 
-    const attachmentIcon = (task.attachments && task.attachments.length > 0) ? `<div class="flex items-center gap-1 text-xs text-custom-medium dark:text-custom-light font-semibold"><i data-lucide="paperclip" class="w-3 h-3"></i>${task.attachments.length}</div>` : '';
+    const attachmentIcon = (task.attachments && task.attachments.length > 0) 
+        ? `<div class="flex items-center gap-1 text-xs text-custom-medium dark:text-custom-light font-semibold"><i data-lucide="paperclip" class="w-3 h-3"></i>${task.attachments.length}</div>` 
+        : '';
 
+    // Monta o HTML final do card
     taskCard.innerHTML = `
         <div class="flex flex-col justify-between w-full flex-grow">
             <div class="p-3">
@@ -164,6 +186,7 @@ export const createTaskElement = (task) => {
             <span class="text-white text-xs font-bold truncate">${task.project || ''}</span>
         </div>
     `;
+
     return taskCard;
 };
 
@@ -198,7 +221,7 @@ export function renderKanbanView() {
             const list = columnEl.querySelector('.task-list');
             header.innerHTML = `<span>${col.name}</span><span class="bg-custom-light dark:bg-custom-dark/80 text-custom-darkest dark:text-custom-light text-xs font-bold px-2 py-1 rounded-full">${tasksForColumn.length}</span>`;
             tasksForColumn.forEach(task => list.appendChild(createTaskElement(task)));
-        }
+        }   
     });
     lucide.createIcons();
 }
