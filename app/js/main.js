@@ -87,8 +87,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.addEventListener('click', async (e) => {
             const infoBtn = e.target.closest('.info-btn');
             if (infoBtn) {
-                // ... código existente ...
-                // Adicione isto:
                 setTimeout(() => setupCommentAutocomplete(), 500); // Timeout pequeno para esperar o modal renderizar
             }
         });
